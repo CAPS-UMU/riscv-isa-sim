@@ -210,7 +210,7 @@ static G4InstInfo g4trace_decode(processor_t *p, reg_t pc, insn_t insn) {
         } else {
           ret.type = G4InstType::UNKNOWN;
         }
-      } else if (eq_any(width, 0x3, 0x4)) { // xxx.vi xxx.vx
+      } else if (eq_any(width, 0x0, 0x2, 0x3, 0x4)) { // xxx.vi xxx.vx integer_xxx.vv xxx.mm
         ret.type = G4InstType::GENERIC;
       } else {
         ret.type = G4InstType::UNKNOWN;
