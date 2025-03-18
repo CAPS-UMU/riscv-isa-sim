@@ -6,12 +6,17 @@
 #include "disasm.h"
 #include "decode_macros.h"
 #include <cassert>
+#include "g4trace.h"
 
-static void commit_log_reset(processor_t* p)
+static void commit_log_and_g4trace_reset(processor_t* p)
 {
+  p->get_state()->log_reg_read.clear();
   p->get_state()->log_reg_write.clear();
   p->get_state()->log_mem_read.clear();
   p->get_state()->log_mem_write.clear();
+  p->get_state()->g4trace_setpc_done = false;
+  p->get_state()->g4trace_last_setpc = 0;
+
 }
 
 static void commit_log_stash_privilege(processor_t* p)
@@ -70,6 +75,8 @@ static void commit_log_print_insn(processor_t *p, reg_t pc, insn_t insn)
   int priv = p->get_state()->last_inst_priv;
   int xlen = p->get_state()->last_inst_xlen;
   int flen = p->get_state()->last_inst_flen;
+
+  if (priv && p->get_log_filter_privileged()) return;
 
   // print core id on all lines so it is easy to grep
   fprintf(log_file, "core%4" PRId32 ": ", p->get_id());
@@ -164,32 +171,54 @@ static inline reg_t execute_insn_fast(processor_t* p, reg_t pc, insn_fetch_t fet
 }
 static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t fetch)
 {
-  if (p->get_log_commits_enabled()) {
-    commit_log_reset(p);
+  if (p->get_log_commits_enabled() || p->get_log_g4trace_enabled()) {
+    commit_log_and_g4trace_reset(p);
     commit_log_stash_privilege(p);
   }
 
   reg_t npc;
 
+  if (fetch.insn.bits() == 0x40205013 /* srai zero, zero, 2 */) {
+    // Start tracing
+    p->set_log_active(true);
+  } else if (fetch.insn.bits() == 0x40005013 /* srai zero, zero, 0 */) {
+    // Begin ROI
+    p->set_log_active(true); // should be true already because Start tracing should have appeared before
+  } // Note that End ROI is handled later to ensure that the End_ROI instruction is logged
+  
   try {
     npc = fetch.func(p, fetch.insn, pc);
     if (npc != PC_SERIALIZE_BEFORE) {
-      if (p->get_log_commits_enabled()) {
-        commit_log_print_insn(p, pc, fetch.insn);
+      if (p->get_log_active()) {
+        if (p->get_log_commits_enabled()) {
+          commit_log_print_insn(p, pc, fetch.insn);
+        }
+        if (p->get_log_g4trace_enabled()) {
+          g4trace_trace_inst(p, pc, fetch.insn);
+        }
       }
-     }
+    }
   } catch (wait_for_interrupt_t &t) {
+    if (p->get_log_active()) {
+
       if (p->get_log_commits_enabled()) {
         commit_log_print_insn(p, pc, fetch.insn);
       }
-      throw;
+      if (p->get_log_g4trace_enabled()) {
+        g4trace_trace_inst(p, pc, fetch.insn); // TODO: this has not been observed inside a ROI
+        fflush(p->get_g4trace_output_file());
+        assert("This situation has not been observed, please check correctness" && false);
+      }
+    }
+    throw;
   } catch(mem_trap_t& t) {
       //handle segfault in midlle of vector load/store
       if (p->get_log_commits_enabled()) {
         for (auto item : p->get_state()->log_reg_write) {
           if ((item.first & 3) == 3) {
             commit_log_print_insn(p, pc, fetch.insn);
-            break;
+            // g4trace(p, pc, fetch.insn); TODO: this does not work correctly because the instruction may have not finished, but it should not happen in ROIs anyways unless it is a page fault, in which case the instruction will be reexecuted)
+           break;
           }
         }
       }
@@ -199,13 +228,18 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
   }
   p->update_histogram(pc);
 
+  if (fetch.insn.bits() == 0x40105013 /* srai zero, zero, 1 */) {
+    // End ROI
+    p->set_log_active(false);
+  }
+
   return npc;
 }
 
 bool processor_t::slow_path()
 {
   return debug || state.single_step != state.STEP_NONE || state.debug_mode ||
-         log_commits_enabled || histogram_enabled || in_wfi || check_triggers_icount;
+         log_commits_enabled || g4trace_enabled || histogram_enabled || in_wfi || check_triggers_icount;
 }
 
 // fetch/decode/execute loop
@@ -282,7 +316,7 @@ void processor_t::step(size_t n)
 
           in_wfi = false;
           insn_fetch_t fetch = mmu->load_insn(pc);
-          if (debug && !state.serialized)
+          if (debug && !state.serialized && log_active && !(state.prv && log_filter_privileged))
             disasm(fetch.insn);
           pc = execute_insn_logged(this, pc, fetch);
           advance_pc();

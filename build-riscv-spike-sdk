@@ -1,0 +1,43 @@
+#!/bin/bash
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+SCRIPT_COMMAND="$0"
+set -o nounset
+set -o pipefail
+set -o errexit
+trap 'echo "$SCRIPT_COMMAND: error $? at line $LINENO"' ERR
+
+if [ -e riscv-spike-sdk/toolchain/env.sh ] ; then
+    echo "Seems riscv-spike-sdk has been built here already."
+    # TODO: update / rebuild?
+    exit 1
+fi
+
+git clone https://github.com/sycuricon/riscv-spike-sdk.git
+cd riscv-spike-sdk
+#git checkout 4e7c01f89c60789525576b80b3939332e5fa21f9 # this checkout is known to work as of 2025-03-17
+git submodule update --init --recursive --progress
+sed -i 's/ --passive-ftp//g' repo/buildroot/Config.in repo/buildroot/utils/genrandconfig
+grep -q CONFIG_PERF_EVENTS conf/linux_defconfig || echo "CONFIG_PERF_EVENTS=y" >> conf/linux_defconfig
+make BL=opensbi ISA=rv64gcv
+
+
+# create a script than can be sourced to use the toolchain
+echo > toolchain/env.sh '# -*- sh -*-
+THIS_PREFIX="${1:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")}"
+
+if [ -n "${PATH:-}" ] ; then
+   export PATH="${THIS_PREFIX}/bin:${PATH}"
+else
+   export PATH="${THIS_PREFIX}/bin"
+fi
+if [ -n "${LD_LIBRARY_PATH:-}" ] ; then
+   export LD_LIBRARY_PATH="${THIS_PREFIX}/lib:${THIS_PREFIX}/lib64:${LD_LIBRARY_PATH}"
+else
+   export LD_LIBRARY_PATH="${THIS_PREFIX}/lib:${THIS_PREFIX}/lib64"
+fi
+if [ -n "${MANPATH:-}" ] ; then
+   export MANPATH="${THIS_PREFIX}/share/man:${MANPATH}"
+else
+   export MANPATH="${THIS_PREFIX}/share/man"
+fi
+'

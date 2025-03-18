@@ -1,0 +1,26 @@
+#!/bin/bash
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+SCRIPT_COMMAND="$0"
+set -o nounset
+set -o pipefail
+set -o errexit
+trap 'echo "$SCRIPT_COMMAND: error $? at line $LINENO"' ERR
+
+if [ -e "build" ] ; then
+    echo "«build» already exists"
+    # TODO: rebuild?
+    exit 1
+fi
+
+if [ ! -e "${SCRIPT_DIR}/riscv-spike-sdk/toolchain/env.sh" ] ; then
+    ( cd "${SCRIPT_DIR}" ; ./build-riscv-spike-sdk )
+fi
+
+. "${SCRIPT_DIR}/riscv-spike-sdk/toolchain/env.sh"
+
+mkdir build
+cd build
+
+"${SCRIPT_DIR}/configure" --prefix="${SCRIPT_DIR}/riscv-spike-sdk/toolchain/"
+make -j10
+make install

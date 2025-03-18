@@ -15,8 +15,21 @@
 #define STATE (*p->get_state())
 #define FLEN (p->get_flen())
 #define CHECK_REG(reg) ((void) 0)
-#define READ_REG(reg) (CHECK_REG(reg), STATE.XPR[reg])
-#define READ_FREG(reg) STATE.FPR[reg]
+#define READ_REG(reg) ({\
+    CHECK_REG(reg); \
+    reg_t rdata = STATE.XPR[reg];                   \
+    if (DECODE_MACRO_USAGE_LOGGED)                      \
+      STATE.log_reg_read[(reg) << 4] = {rdata, 0} ;     \
+    rdata ;                                             \
+  })
+#define READ_FREG(reg) ({            \
+    freg_t rdata = STATE.FPR[reg]; \
+    if (DECODE_MACRO_USAGE_LOGGED)                      \
+      STATE.log_reg_read[(reg) << 4 | 1] = rdata ;     \
+    rdata ;                        \
+  })
+      
+      
 #define RD READ_REG(insn.rd())
 #define RS1 READ_REG(insn.rs1())
 #define RS2 READ_REG(insn.rs2())
@@ -228,6 +241,10 @@ static inline bool is_aligned(const unsigned val, const unsigned pos)
 #define set_pc(x) \
   do { p->check_pc_alignment(x); \
        npc = sext_xlen(x); \
+       if (DECODE_MACRO_USAGE_LOGGED) { \
+         STATE.g4trace_setpc_done = true; \
+         STATE.g4trace_last_setpc = npc; \
+       } \
      } while (0)
 
 #define set_pc_and_serialize(x) \

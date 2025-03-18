@@ -520,6 +520,8 @@ freg_t sim_t::get_freg(const std::vector<std::string>& args, int size)
   if (args.size() != 2)
     throw trap_interactive();
 
+#define DECODE_MACRO_USAGE_LOGGED 0
+  
   processor_t *p = get_core(args[0]);
   if (p->extension_enabled(EXT_ZFINX)) {
     int r = std::find(xpr_name, xpr_name + NXPR, args[1]) - xpr_name;
@@ -542,6 +544,7 @@ freg_t sim_t::get_freg(const std::vector<std::string>& args, int size)
       throw trap_interactive();
     return p->get_state()->FPR[r];
   }
+#undef DECODE_MACRO_USAGE_LOGGED
 }
 
 void sim_t::interactive_vreg(const std::string& cmd, const std::vector<std::string>& args)

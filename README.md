@@ -1,3 +1,36 @@
+Spike RISC-V ISA Simulator with tracer for gems4proc
+======================================================
+
+This is a fork of Spike that can generate traces for gems4proc. It's requirements and build instructions are the same as the original spike.
+
+It adds the following command line options to Spike:
+
+ - --log-g4trace: Enable the generation of gems4proc traces.
+ - --log-g4trace-dest: Specify the destination of the trace. A directory will be created with the given path.
+ - --log-g4trace-debug: Enable debug comments in the generated traces.
+ - TODO: add option --log-use-roi-markers (always enabled for now)
+ - TODO: add option --log-filter-privileged (always enabled for now)
+
+The build procedure is the same as upstream Spike. You can read or use the build-riscv-tracer script to build the tracer and the required riscv-spike-sdk in a way that has already been tested.
+ 
+Programs can be simulated (and traced) in all the same ways as with upstream Spike. The script spike-run-fs can be used to run a program using full system simulation using the kernel and initrd built with buildroot by riscv-spike-sdk (see buildroot documentation for possible customizations). An additional temporary initrd will be created with the program to be simulated and some supporting files.
+
+The traced programs are expected to be annotated using the hint instructions deefined in g4tracer-api.h (TODO).
+ 
+Tracing of priviledged (OS) code is not supported. Priviledged instructions will be filtered.
+
+Thread migration should be avoided (bind threads to processes, leave an extra core to reduce OS interfence).
+ 
+Test programs are in tracer_test.
+
+Example of use:
+
+   ./spike-run-fs --spike=/home/ricardo/datos/arsenio/spike-orig/riscv-isa-sim/build/spike -s--log-g4trace -s--log-g4trace-dest=./trace-output  -- ./tracer_tests/test02/test02.gcc.riscv64gcv
+
+
+Upstream README
+=================
+
 Spike RISC-V ISA Simulator
 ============================
 

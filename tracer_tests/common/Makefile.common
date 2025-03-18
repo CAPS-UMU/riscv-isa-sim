@@ -1,0 +1,42 @@
+# -*- Makefile -*-
+
+targets:=gcc.riscv64gc gcc.riscv64gcv
+# clang.riscv64 gcc.native gcc.riscv64 gcc.native
+executables:=$(foreach t,$(targets),$(benchmark).$(t))
+
+gpp_native=g++ -std=gnu++2b
+gpp_riscv=riscv64-unknown-linux-gnu-g++ -std=gnu++2b
+gcc_riscv=riscv64-unknown-linux-gnu-gcc
+clang=clang++
+
+flags_common=-Wall -O3 -ffast-math -static -I../common
+flags_riscv=-mabi=lp64d # not really necessary 
+
+all: $(executables)
+
+clean:
+	rm -f $(executables) $(foreach e,$(executables),$(e).objdump)
+
+%.gcc.native: %.cpp
+	$(gpp_native) $(flags_common) $< -o $@
+
+%.gcc.riscv64: %.cpp
+	$(gpp_riscv) $(flags_common) $(flags_riscv) $< -o $@
+
+%.gcc.riscv64gc: %.cpp
+	$(gpp_riscv) $(flags_common) $(flags_riscv) -march=rv64gc $< -o $@
+
+%.gcc.riscv64gcv: %.cpp
+	$(gpp_riscv) $(flags_common) $(flags_riscv) -march=rv64gcv $< -o $@
+
+%.gcc.riscv64gc: %.c
+	$(gcc_riscv) $(flags_common) $(flags_riscv) -march=rv64gc $< -o $@
+
+%.gcc.riscv64gcv: %.c
+	$(gcc_riscv) $(flags_common) $(flags_riscv) -march=rv64gcv $< -o $@
+
+%.clang.riscv64: %.cpp # TODO
+	$(clang) --target=riscv64-linux-gnu --gcc-toolchain=… --sysroot=… $(flags_common) $< -o $@
+
+%.objdump: %
+	riscv64-unknown-linux-gnu-objdump -S $< > $@

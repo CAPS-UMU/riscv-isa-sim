@@ -79,8 +79,13 @@ template<class T> T& vectorUnit_t::elt(reg_t vReg, reg_t n, bool UNUSED is_write
 #endif
   reg_referenced[vReg] = 1;
 
-  if (unlikely(p->get_log_commits_enabled() && is_write))
-    p->get_state()->log_reg_write[((vReg) << 4) | 2] = {0, 0};
+  if (unlikely(p && (p->get_log_commits_enabled() || p->get_log_g4trace_enabled()))) {
+    if (is_write) {
+      p->get_state()->log_reg_write[((vReg) << 4) | 2] = {0, 0};
+    } else {
+      p->get_state()->log_reg_read[((vReg) << 4) | 2] = {0, 0};
+    }
+  }
 
   T *regStart = (T*)((char*)reg_file + vReg * (VLEN >> 3));
   return regStart[n];
@@ -128,8 +133,12 @@ vectorUnit_t::elt_group(reg_t vReg, reg_t n, bool UNUSED is_write) {
   for (reg_t vidx = reg_first; vidx <= reg_last; ++vidx) {
       reg_referenced[vidx] = 1;
 
-      if (unlikely(p->get_log_commits_enabled() && is_write)) {
-          p->get_state()->log_reg_write[(vidx << 4) | 2] = {0, 0};
+      if (unlikely(p && (p->get_log_commits_enabled() || p->get_log_g4trace_enabled()))) {
+        if (is_write) {
+          p->get_state()->log_reg_write[((vReg) << 4) | 2] = {0, 0};
+        } else {
+          p->get_state()->log_reg_read[((vReg) << 4) | 2] = {0, 0};
+        }
       }
   }
 

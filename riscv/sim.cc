@@ -9,6 +9,7 @@
 #include "platform.h"
 #include "libfdt.h"
 #include "socketif.h"
+#include <filesystem>
 #include <fstream>
 #include <map>
 #include <iostream>
@@ -318,15 +319,24 @@ void sim_t::set_histogram(bool value)
   }
 }
 
-void sim_t::configure_log(bool enable_log, bool enable_commitlog)
+void sim_t::configure_log(bool enable_log, bool enable_commitlog, bool enable_g4trace, const char* g4trace_dest, bool g4trace_verbose)
 {
   log = enable_log;
 
-  if (!enable_commitlog)
-    return;
+  if (enable_commitlog) {
+    for (processor_t *proc : procs) {
+      proc->enable_log_commits();
+    }
+  }
 
-  for (processor_t *proc : procs) {
-    proc->enable_log_commits();
+  if (enable_g4trace) {
+    for (processor_t *proc : procs) {
+      std::stringstream name;
+      name << "trace-" << std::setw(4) << std::setfill('0') << proc->get_id() << ".trc";
+      std::filesystem::path p = std::filesystem::path(g4trace_dest) / name.str();
+      FILE* f = fopen(p.c_str(), "w"); // TODO: gzip / lzma
+      proc->enable_g4trace(f, g4trace_verbose);
+    }
   }
 }
 

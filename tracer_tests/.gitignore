@@ -1,0 +1,7 @@
+*.gcc.native
+*.gcc.riscv64
+*.clang.riscv64
+*.gcc.riscv64gc
+*.gcc.riscv64gc.objdump
+*.gcc.riscv64gcv
+*.gcc.riscv64gcv.objdump
