@@ -25,7 +25,7 @@ Test programs are in tracer_test.
 
 Example of use:
 
-   ./spike-run-fs --spike=/home/ricardo/datos/arsenio/spike-orig/riscv-isa-sim/build/spike -s--log-g4trace -s--log-g4trace-dest=./trace-output  -- ./tracer_tests/test02/test02.gcc.riscv64gcv
+   ./spike-run-fs -s--log-g4trace -s--log-g4trace-dest=./trace-output  -- ./tracer_tests/test02/test02.gcc.riscv64gcv
 
 
 Upstream README
