@@ -71,6 +71,7 @@ enum class G4VectorMemAccessType {
   INDEXED,
 };
 
+# pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wsign-compare"
 template <typename T, typename... Args>
 bool eq_any(const T& first, const Args&... rest) {
@@ -183,6 +184,7 @@ static G4InstInfo g4trace_decode(processor_t *p, reg_t pc, insn_t insn) {
                    0x05,  // 00 101 AUIPC
                    0x06,  // 00 110 OP-IMM-32
                    0x0c,  // 01 100 OP
+                   0x0e, // 01 110 OP-32
                    0x0d)) // 01 101 LUI
     {
       if (insn.bits() == 0x40205013 /* srai zero, zero, 2 */) {
@@ -193,6 +195,17 @@ static G4InstInfo g4trace_decode(processor_t *p, reg_t pc, insn_t insn) {
         ret.type = G4InstType::END_ROI;  // ROI end
       } else {
         ret.type = G4InstType::GENERIC;
+      }
+    } else if (next5bits == 0x14) { // 10 100 OPF-P
+      auto first5bits = (insn.bits() & 0xf8000000) >> 27;
+      if (first5bits == 0x00) {
+        ret.type = G4InstType::A;
+      } else if (first5bits == 0x03) {
+        ret.type = G4InstType::D;
+      } else if (eq_any(first5bits, 0x08, 0x18, 0x1a, 0x1c)) { // fcvf, fclass, fmv
+        ret.type = G4InstType::GENERIC;
+      } else {
+        ret.type = G4InstType::UNKNOWN;
       }
     } else if (next5bits == 0x15) { // 10 101 OP-V
       auto width = insn.v_width();
@@ -205,8 +218,10 @@ static G4InstInfo g4trace_decode(processor_t *p, reg_t pc, insn_t insn) {
           ret.type = G4InstType::M; // vfmacc vfmadd vfnmacc vfnmadd vfnmsac vfnmsub vfmsac vfmsub
         } else if (eq_any(first6bits, 0x24, 0x38)) {
           ret.type = G4InstType::M; // vfmul vfwmul
-        } else if (eq_any(first6bits, 0x17)) {
-          ret.type = G4InstType::GENERIC; // vfmv
+        } else if (eq_any(first6bits, 0x00)) {
+          ret.type = G4InstType::A; // vfadd
+        } else if (eq_any(first6bits, 0x12, 0x17)) {
+          ret.type = G4InstType::GENERIC; // vfcvt, vfmv
         } else {
           ret.type = G4InstType::UNKNOWN;
         }
@@ -295,8 +310,16 @@ static void g4trace_print_memory_access_addresses(const commit_log_mem_t& access
     fprintf(log_file, " %lx %d", addr_first, size);
   } else if (g4i.memory_access_type ==  G4VectorMemAccessType::CONTIGUOUS) {
     fprintf(log_file, "s%de%lu %lx", size, num_items, addr_first); // assuming that the first address is the lowest
+  } else if (g4i.memory_access_type ==  G4VectorMemAccessType::INDEXED) {
+    fprintf(log_file, "s%de%lu ", size, num_items);
+    for (auto i = accesses.cbegin(); i != accesses.cend(); i++) {
+      if (i != accesses.cbegin()) {
+        fprintf(log_file, ",");
+      }
+      fprintf(log_file, "%lx", get<0>(*i));
+    }
   } else {
-    fprintf(log_file, " TODO access_type=%d ", (int) g4i.memory_access_type);
+    fprintf(log_file, " TODO access_tcype=%d ", (int) g4i.memory_access_type);
     for (auto item : accesses) {
       auto addr = get<0>(item);
       auto size = get<2>(item);
@@ -341,8 +364,14 @@ static void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn) {
 
   if (g4i.type == G4InstType::GENERIC) {
     fprintf(log_file, "%ld", diffpc);
+  } else if (g4i.type == G4InstType::A) {
+    fprintf(log_file, "A%ld", diffpc);
   } else if (g4i.type == G4InstType::M) {
     fprintf(log_file, "M%ld", diffpc);
+  } else if (g4i.type == G4InstType::D) {
+    fprintf(log_file, "D%ld", diffpc);
+  } else if (g4i.type == G4InstType::Q) {
+    fprintf(log_file, "Q%ld", diffpc);
   } else if (g4i.type == G4InstType::L) {
     fprintf(log_file, "L%ld", diffpc);
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
