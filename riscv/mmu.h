@@ -24,6 +24,7 @@ const reg_t PGMASK = ~(PGSIZE-1);
 struct insn_fetch_t
 {
   insn_func_t func;
+  G4TraceDecoder g4trace_decoder;
   insn_t insn;
 };
 
@@ -314,7 +315,8 @@ public:
       insn |= (insn_bits_t)from_le(*(const uint16_t*)translate_insn_addr_to_host(addr + 6)) << 48;
     }
 
-    insn_fetch_t fetch = {proc->decode_insn(insn), insn};
+    auto decoded_inst = proc->decode_insn(insn);
+    insn_fetch_t fetch = {decoded_inst.exec_func, decoded_inst.g4trace_decoder, insn};
     entry->tag = addr;
     entry->next = &icache[icache_index(addr + length)];
     entry->data = fetch;

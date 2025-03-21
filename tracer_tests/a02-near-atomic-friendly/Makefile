@@ -1,3 +1,3 @@
-benchmark=near-atomic-friendly
+benchmark=a02-near-atomic-friendly
 
 include ../common/Makefile.common

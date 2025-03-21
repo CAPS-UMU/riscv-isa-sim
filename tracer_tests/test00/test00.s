@@ -11,7 +11,10 @@ _start:
 
         j       x
         
-x:      jal     y
+x:      beq     x0, x5, z
+        bne     x0, x0, t
+        beq     x0, x0, t
+t:      jal     y
 
         la      t5, z
         jr      t5

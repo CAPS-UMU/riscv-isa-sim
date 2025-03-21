@@ -3,6 +3,7 @@
 #define _RISCV_PROCESSOR_H
 
 #include "decode.h"
+#include "g4trace.h"
 #include "trap.h"
 #include "abstract_device.h"
 #include <string>
@@ -43,6 +44,8 @@ struct insn_desc_t
   insn_func_t logged_rv64i;
   insn_func_t logged_rv32e;
   insn_func_t logged_rv64e;
+
+  G4TraceDecoder g4trace_decoder;
 
   insn_func_t func(int xlen, bool rve, bool logged) const
   {
@@ -436,7 +439,12 @@ private:
   void parse_priv_string(const char*);
   void build_opcode_map();
   void register_base_instructions();
-  insn_func_t decode_insn(insn_t insn);
+
+  struct decoded_insn_t {
+    insn_func_t exec_func;
+    G4TraceDecoder g4trace_decoder;
+  };
+  decoded_insn_t decode_insn(insn_t insn);
 
   // Track repeated executions for processor_t::disasm()
   uint64_t last_pc, last_bits, executions;

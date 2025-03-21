@@ -667,7 +667,7 @@ reg_t illegal_instruction(processor_t UNUSED *p, insn_t insn, reg_t UNUSED pc)
   throw trap_illegal_instruction(insn.bits() & 0xffffffffULL);
 }
 
-insn_func_t processor_t::decode_insn(insn_t insn)
+processor_t::decoded_insn_t processor_t::decode_insn(insn_t insn)
 {
   // look up opcode in hash table
   size_t idx = insn.bits() % OPCODE_CACHE_SIZE;
@@ -690,7 +690,10 @@ insn_func_t processor_t::decode_insn(insn_t insn)
     opcode_cache[idx].replace(insn.bits(), desc);
   }
 
-  return desc->func(xlen, rve, (log_commits_enabled || g4trace_enabled) && log_active);
+  auto exec_func = desc->func(xlen, rve, (log_commits_enabled || g4trace_enabled) && log_active);
+  auto g4_func = desc->g4trace_decoder;
+
+  return {exec_func, g4_func};
 }
 
 void processor_t::register_insn(insn_desc_t desc, bool is_custom) {
@@ -760,7 +763,8 @@ void processor_t::register_base_instructions()
         logged_rv32i_##name, \
         logged_rv64i_##name, \
         logged_rv32e_##name, \
-        logged_rv64e_##name});
+        logged_rv64e_##name, \
+        g4trace_get_decoder(#name)});
   #include "overlap_list.h"
   #undef DECLARE_OVERLAP_INSN
 
@@ -779,7 +783,8 @@ void processor_t::register_base_instructions()
         logged_rv32i_##name, \
         logged_rv64i_##name, \
         logged_rv32e_##name, \
-        logged_rv64e_##name});
+        logged_rv64e_##name, \
+        g4trace_get_decoder(#name)});
   #include "insn_list.h"
   #undef DEFINE_INSN
 

@@ -12,11 +12,11 @@
 #define TRACER_VERBOSE 1
 #endif
 #ifndef TRACER_VERBOSE_RDCYCLE
-#define TRACER_VERBOSE_RDCYCLE 0
+#define TRACER_VERBOSE_RDCYCLE 0 // Using RDCYLE and RDINSTRET from userspace is deprecated and requires enabling kernel support
 #endif
 
-#if TRACER_VERBOSE
 // These will only work correctly if tracer_start_ROI and tracer_end_ROI are called from the same file
+#if TRACER_VERBOSE
 static uint64_t _tracer_roi_start_rdtime;
 #if TRACER_VERBOSE_RDCYCLE
 static uint64_t _tracer_roi_start_cycle;

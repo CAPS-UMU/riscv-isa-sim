@@ -9,5 +9,8 @@ $(benchmark).riscv64gcv: $(benchmark).s
 	$(as_riscv) -march=rv64gcv -o $@.o $<
 	$(ld_riscv) -o $@ $@.o
 
+%.objdump: %
+	riscv64-unknown-linux-gnu-objdump -S $< > $@
+
 clean:
 	rm -f $(benchmark).riscv64gcv.o $(benchmark).riscv64gcv
