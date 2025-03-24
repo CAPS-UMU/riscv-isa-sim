@@ -25,10 +25,9 @@ Supported options:
                                 initramfs. Useful with --dry-run to be able
                                 to execute the printed command.
     --debug:                Prepend the command with «gdb --args »
+    --stdin=F:              Redirect program stdin from F
     --help:                 Show this help."
 }
-
-echo $#
 
 if [ $# -eq 0 ] ; then
     show_help
@@ -42,8 +41,9 @@ KEEP_TMP=no
 declare -a SPIKE_ARGS
 SPIKE_ARGS=()
 COMMAND_PREFIX=""
+REDIRECT_STDIN=""
 
-optspec="spike:,spike-arg:,spike-sdk:,num-procs:,dry-run,keep-tmp,debug,help"
+optspec="spike:,spike-arg:,spike-sdk:,num-procs:,dry-run,keep-tmp,debug,stdin:,help"
 optspec_short="s:"
 errors="$(getopt -n error-detected -Q --options "${optspec_short}" --long ${optspec} -- "$@" 2>&1 || true)"
 if [[ "$errors" =~ error-detected:.+ ]] ; then
@@ -72,6 +72,9 @@ while [[ $# -gt 0 ]] ; do
         KEEP_TMP=yes
     elif [[ "--debug" = "$1" ]] ; then
         COMMAND_PREFIX="gdb --args "
+    elif [[ "--stdin" = "$1" ]] ; then
+        shift
+        REDIRECT_STDIN="$1"
     elif [[ "--help" = "$1" ]] ; then
         show_help 2>&1
         exit 0
@@ -119,12 +122,16 @@ cp "$BENCHMARK" "$TMP_DIR"/initramfs/benchmark/
     printf "if test -f /proc/sys/kernel/perf_user_access ; then echo 2 > /proc/sys/kernel/perf_user_access ; fi\n"
     printf "echo 'Starting benchmark'\n"
     printf "set -x\n"
+    if [ -n "$REDIRECT_STDIN" ] ; then
+        printf "< /redirected_stdin "
+    fi
     printf "/benchmark/%q" "$(basename "${BENCHMARK}")"
     if [[ "${#BENCHMARK_ARGS[@]}" -gt 0 ]] ; then
         printf " %q" "${BENCHMARK_ARGS[@]}"
     fi
     printf "\n"
 } > "$TMP_DIR"/initramfs/benchmark-start
+
 mkdir "$TMP_DIR"/initramfs/etc/
 echo "# Startup the system
 ::sysinit:/bin/mount -t proc proc /proc
@@ -150,6 +157,9 @@ null::sysinit:/bin/ln -sf /proc/self/fd/2 /dev/stderr
 ::sysinit:/sbin/poweroff
 " > "$TMP_DIR"/initramfs/etc/inittab
 chmod +x "$TMP_DIR"/initramfs/benchmark-start
+if [ -n "$REDIRECT_STDIN" ] ; then
+    cat < "$REDIRECT_STDIN" > "$TMP_DIR"/initramfs/redirected_stdin
+fi
 ( cd "$TMP_DIR"/initramfs/ ; find . -print0 | cpio --null --create --format=newc --quiet > "${INITRAMFS}" )
 
 declare -a COMMAND
