@@ -65,7 +65,7 @@ reg_t mmu_t::translate(mem_access_info_t access_info, reg_t len)
 
   reg_t paddr = walk(access_info) | (addr & (PGSIZE-1));
   if (!pmp_ok(paddr, len, access_info.flags.ss_access ? STORE : type, mode, access_info.flags.hlvx))
-    throw_access_exception(virt, addr, type);
+    throw_access_exception(virt, addr, access_info.flags.ss_access ? STORE : type);
   return paddr;
 }
 
@@ -215,7 +215,9 @@ void mmu_t::load_slow_path_intrapage(reg_t len, uint8_t* bytes, mem_access_info_
       refill_tlb(addr, paddr, host_addr, LOAD);
 
   } else if (!mmio_load(paddr, len, bytes)) {
-    throw trap_load_access_fault(access_info.effective_virt, transformed_addr, 0, 0);
+    (access_info.flags.ss_access)?
+      throw trap_store_access_fault(access_info.effective_virt, transformed_addr, 0, 0) :
+      throw trap_load_access_fault(access_info.effective_virt, transformed_addr, 0, 0);
   }
 
   if (access_info.flags.lr) {
