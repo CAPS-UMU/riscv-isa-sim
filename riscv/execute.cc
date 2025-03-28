@@ -206,6 +206,7 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
       }
       if (p->get_log_g4trace_enabled()) {
         g4trace_trace_inst(p, pc, fetch.insn, fetch.g4trace_decoder);
+      }
     }
     throw;
   } catch(mem_trap_t& t) {
