@@ -430,6 +430,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     assert(g4i.S_base_reg != g4trace_regid_invalid);
     assert(g4i.S_data_reg != g4trace_regid_invalid);
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
+    assert(loads.size() == stores.size()); // TODO: check that this is necessarily true (maybe the stores don't always happen?);
   } else if (g4i.type == G4InstType::B) {
     fprintf(log_file, "B%ld", diffpc);
     assert(g4i.target_address != g4trace_invalid_target_address);
@@ -471,8 +472,8 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
 
   p->get_state()->g4trace_lastpc = pc;
 
-  // print x and y register operands for S and RMW, and x operands for anything else
-  if (g4i.type == G4InstType::S || g4i.type == G4InstType::RMW) {
+  // print x and y register operands for S (and not RMW), and x operands for anything else
+  if (g4i.type == G4InstType::S/* || g4i.type == G4InstType::RMW*/) {
     assert(g4i.S_base_reg != g4trace_regid_invalid);
     assert(g4i.S_data_reg != g4trace_regid_invalid);
     assert(count_if(read_regs.begin(), read_regs.end(), [&](auto x){ return g4trace_regid_from_commit_log_reg_id(x.first) == g4i.S_base_reg; }) == 1);
@@ -518,7 +519,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     g4trace_print_memory_access_addresses(loads, g4i, log_file);
   }
 
-  if (!stores.empty()) {
+  if (!stores.empty() && g4i.type != G4InstType::RMW) { // don't print stores for RMWs, they sould be the same as loads
     g4trace_print_memory_access_addresses(stores, g4i, log_file);
   }
 
