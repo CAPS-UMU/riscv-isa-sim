@@ -205,10 +205,7 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
         commit_log_print_insn(p, pc, fetch.insn);
       }
       if (p->get_log_g4trace_enabled()) {
-        g4trace_trace_inst(p, pc, fetch.insn, fetch.g4trace_decoder); // TODO: this has not been observed inside a ROI
-        fflush(p->get_g4trace_output_file());
-        assert("This situation has not been observed, please check correctness" && false);
-      }
+        g4trace_trace_inst(p, pc, fetch.insn, fetch.g4trace_decoder);
     }
     throw;
   } catch(mem_trap_t& t) {
