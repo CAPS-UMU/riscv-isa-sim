@@ -450,9 +450,16 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     fprintf(log_file, "c%ld", diffpc);
     assert(g4i.target_address != g4trace_invalid_target_address);
   } else if (g4i.type == G4InstType::START_TRACING) {
-    p->get_state()->g4trace_lastpc = pc + 4; // Address of next instruction, which will be the first in the trace
-    fprintf(log_file, "%lx\n", p->get_state()->g4trace_lastpc);
-    return; // don't print operands
+    if (!p->get_log_g4trace_has_started()) {
+      p->get_state()->g4trace_lastpc = pc + 4; // Address of next instruction, which will be the first in the trace
+      fprintf(log_file, "%lx\n", p->get_state()->g4trace_lastpc);
+      p->set_log_g4trace_has_started();
+      return; // don't print operands
+    } else {
+      // trace has already started, we have found the marker twice (maybe two threads are runningin the same hart)
+      // don't print anything, don't update lastpc
+      return;
+    }
   } else if (g4i.type == G4InstType::CLEAR) {
     fprintf(log_file, "CLEAR\n");
     return; // don't print operands, don't update lastpc

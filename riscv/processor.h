@@ -268,6 +268,8 @@ public:
   bool get_log_filter_privileged() const { return log_filter_privileged; }
   bool get_log_g4trace_enabled() const { return g4trace_enabled; }
   bool get_log_g4trace_verbose() const { return g4trace_verbose; }
+  bool get_log_g4trace_has_started() const { return g4trace_has_started; }
+  void set_log_g4trace_has_started() { assert(!g4trace_has_started); g4trace_has_started = true; }
   void reset();
   void step(size_t n); // run for n cycles
   void put_csr(int which, reg_t val);
@@ -400,6 +402,7 @@ private:
   bool log_filter_privileged = true; // TODO: add option
   bool g4trace_enabled;
   bool g4trace_verbose;
+  bool g4trace_has_started = false; // The first instruction address ha been printed (to avoid doing it twice if the START_TRACING hint has appeared already)
   FILE *g4trace_output_file = nullptr;
   std::ostream sout_; // needed for socket command interface -s, also used for -d and -l, but not for --log
   bool halt_on_reset;
