@@ -22,7 +22,7 @@ make BL=opensbi ISA=rv64gcv
 
 
 # create a script than can be sourced to use the toolchain
-echo > toolchain/env.sh '# -*- sh -*-
+echo > toolchain/prefix-env.sh '# -*- sh -*-
 THIS_PREFIX="${1:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")}"
 
 if [ -n "${PATH:-}" ] ; then

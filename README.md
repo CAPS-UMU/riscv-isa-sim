@@ -28,6 +28,12 @@ Example of use:
    ./spike-run-fs -s--log-g4trace -s--log-g4trace-dest=./trace-output  -- ./tracer_tests/test02/test02.gcc.riscv64gcv
 
 
+Known Bugs
+=================
+
+ - ecall instructions are currently missing from the trace (and possibly other instructions that generate traps)
+ - context switches will result in mixing traces from different threads
+
 Upstream README
 =================
 
