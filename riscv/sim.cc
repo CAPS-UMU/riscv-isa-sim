@@ -265,8 +265,11 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
 
 sim_t::~sim_t()
 {
-  for (size_t i = 0; i < procs.size(); i++)
+  g4trace_write_index(g4trace_global);
+  for (size_t i = 0; i < procs.size(); i++) {
+    g4trace_close_trace_file(g4trace_global, procs[i]->get_g4trace_output_file());
     delete procs[i];
+  }
   delete debug_mmu;
 }
 
@@ -321,7 +324,7 @@ void sim_t::set_histogram(bool value)
   }
 }
 
-void sim_t::configure_log(bool enable_log, bool enable_commitlog, bool enable_g4trace, const char* g4trace_dest, bool g4trace_verbose)
+void sim_t::configure_log(bool enable_log, bool enable_commitlog, G4TraceConfig* g4trace_config)
 {
   log = enable_log;
 
@@ -330,14 +333,10 @@ void sim_t::configure_log(bool enable_log, bool enable_commitlog, bool enable_g4
       proc->enable_log_commits();
     }
   }
-
-  if (enable_g4trace) {
+  g4trace_global = g4trace_config;
+  if (g4trace_global->enable) {
     for (processor_t *proc : procs) {
-      std::stringstream name;
-      name << "trace-" << std::setw(4) << std::setfill('0') << proc->get_id() << ".trc";
-      std::filesystem::path p = std::filesystem::path(g4trace_dest) / name.str();
-      FILE* f = fopen(p.c_str(), "w"); // TODO: gzip / lzma
-      proc->enable_g4trace(f, g4trace_verbose);
+      proc->enable_g4trace(g4trace_config);
     }
   }
 }

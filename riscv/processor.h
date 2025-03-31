@@ -261,13 +261,18 @@ public:
   void set_debug(bool value);
   void set_histogram(bool value);
   void enable_log_commits();
-  void enable_g4trace(FILE* g4trace_output, bool verbose);
+  void enable_g4trace(G4TraceConfig* global);
   bool get_log_commits_enabled() const { return log_commits_enabled; }
   bool get_log_active() const { return log_active; }
-  void set_log_active(bool v) { log_active = v; }
+  void set_log_active(bool v) {
+    log_active = v;
+    if (get_log_g4trace_enabled() && !g4trace_output_file) {
+      g4trace_output_file = g4trace_open_trace_file(g4trace_global);
+    }
+  }
   bool get_log_filter_privileged() const { return log_filter_privileged; }
-  bool get_log_g4trace_enabled() const { return g4trace_enabled; }
-  bool get_log_g4trace_verbose() const { return g4trace_verbose; }
+  bool get_log_g4trace_enabled() const { return g4trace_global && g4trace_global->enable; }
+  bool get_log_g4trace_verbose() const { return g4trace_global && g4trace_global->verbose; }
   bool get_log_g4trace_has_started() const { return g4trace_has_started; }
   void set_log_g4trace_has_started() { assert(!g4trace_has_started); g4trace_has_started = true; }
   void reset();
@@ -400,8 +405,7 @@ private:
   FILE *log_file;
   bool log_active = false; // TODO: add option --log-use-roi-markers
   bool log_filter_privileged = true; // TODO: add option
-  bool g4trace_enabled;
-  bool g4trace_verbose;
+  G4TraceConfig *g4trace_global = nullptr;
   bool g4trace_has_started = false; // The first instruction address ha been printed (to avoid doing it twice if the START_TRACING hint has appeared already)
   FILE *g4trace_output_file = nullptr;
   std::ostream sout_; // needed for socket command interface -s, also used for -d and -l, but not for --log

@@ -15,11 +15,11 @@ The build procedure is the same as upstream Spike. You can read or use the build
  
 Programs can be simulated (and traced) in all the same ways as with upstream Spike. The script spike-run-fs can be used to run a program using full system simulation using the kernel and initrd built with buildroot by riscv-spike-sdk (see buildroot documentation for possible customizations). An additional temporary initrd will be created with the program to be simulated and some supporting files.
 
-The traced programs are expected to be annotated using the hint instructions deefined in g4tracer-api.h (TODO).
+The traced programs are expected to be annotated using the hint instructions defined in g4tracer-interface.h in tracer_test/common. At least g4tracer_init_thread, g4tracer_start_tracing, g4tracer_start_ROI and g4tracer_end_ROI should be called by each thread that needs to be traced.
  
 Tracing of priviledged (OS) code is not supported. Priviledged instructions will be filtered.
 
-Thread migration should be avoided (bind threads to processes, leave an extra core to reduce OS interfence).
+The tracer works per hart, no per OS thread/process. To get useful application level traces, thread migration should be avoided. The recommended way to do this is to bind threads to processors calling g4tracer_init_thread just after thread creation before calling g4tracer_start_tracing. It is also useful to configure spike with an extra core to reduce OS interfence. The resulting trace will only contain traces for processors that have called g4tracer_start_tracing.
  
 Test programs are in tracer_test.
 

@@ -4,6 +4,13 @@
 #include "config.h"
 #include "memif.h"
 
+struct G4TraceConfig {
+  bool enable = false;
+  bool verbose = false;
+  const char *dest = nullptr;
+  int num_traces = 0; // number of harts that have started tracing
+};
+
 struct G4TraceRegId {
   int id;
   bool operator==(const G4TraceRegId& X) const = default;
@@ -50,5 +57,8 @@ typedef G4InstInfo (*G4TraceDecoder)(processor_t *p, reg_t pc, insn_t insn);
 
 G4TraceDecoder g4trace_get_decoder(const std::string& instr_name);
 void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder decoder);
+FILE *g4trace_open_trace_file(G4TraceConfig *global);
+void g4trace_close_trace_file(G4TraceConfig *global, FILE *f);
+void g4trace_write_index(G4TraceConfig *global);
 
 #endif

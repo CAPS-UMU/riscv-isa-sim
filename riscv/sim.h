@@ -6,6 +6,7 @@
 #include "cfg.h"
 #include "debug_module.h"
 #include "devices.h"
+#include "g4trace.h"
 #include "log_file.h"
 #include "processor.h"
 #include "simif.h"
@@ -48,7 +49,7 @@ public:
   //
   // If enable_log is true, an instruction trace will be generated. If
   // enable_commitlog is true, so will the commit results
-  void configure_log(bool enable_log, bool enable_commitlog, bool enable_g4trace, const char* g4trace_dest, bool g4trace_verbose);
+  void configure_log(bool enable_log, bool enable_commitlog, G4TraceConfig* g4trace_config);
 
   void set_procs_debug(bool value);
   void set_remote_bitbang(remote_bitbang_t* remote_bitbang) {
@@ -84,6 +85,8 @@ private:
   log_file_t log_file;
 
   FILE *cmd_file; // pointer to debug command input file
+
+  G4TraceConfig* g4trace_global = nullptr;
 
   std::optional<unsigned long long> instruction_limit;
 

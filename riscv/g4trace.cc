@@ -2,6 +2,8 @@
 #include "processor.h"
 #include "disasm.h"
 
+#include <filesystem>
+
 using namespace std;
 
 static G4TraceRegId g4trace_regid_x(reg_t reg_id) { assert((reg_id & 0x1f) == reg_id); return { int(reg_id) }; }
@@ -548,5 +550,37 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
 }
 
 
+void g4trace_write_index(G4TraceConfig *global) {
+  if (global && global->enable) {
+    if (global->num_traces > 0) {
+      auto index_filename = filesystem::path(global->dest) / "trace.index";
+      ofstream index_file(index_filename, ios::out);
+      index_file << global->num_traces << endl;
+      index_file << "TRACE_HAS_SEQUENCE_NUMBERS: 0" << endl;
+      index_file << "TRACE_HAS_SC_vs_RELAXED_LOCK_TYPE: 0" << endl;
+      index_file.close();
+    } else {
+      cerr << "No gems4proc trace created. It seems no processor used the START_TRACING hint." << endl;
+    }
+  }
+}
 
+FILE *g4trace_open_trace_file(G4TraceConfig *global) {
+  assert(global->enable);
+  if (!filesystem::exists(global->dest)) {
+    filesystem::create_directory(global->dest);
+  }
+  stringstream name;
+  name << "trace-" << setw(4) << setfill('0') << global->num_traces << ".trc";
+  filesystem::path p = filesystem::path(global->dest) / name.str();
+  FILE* f = fopen(p.c_str(), "w"); // TODO: gzip / lzma
+  ++global->num_traces;
+  return f;
+}
 
+void g4trace_close_trace_file(G4TraceConfig *global, FILE *f)
+{
+  if (f) {
+    fclose(f);
+  }
+}

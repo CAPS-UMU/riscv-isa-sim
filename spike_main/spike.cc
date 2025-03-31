@@ -21,6 +21,7 @@
 #include <cinttypes>
 #include <sstream>
 #include <filesystem>
+#include "g4trace.h"
 #include "../VERSION"
 
 static void help(int exit_code = 1)
@@ -336,9 +337,7 @@ int main(int argc, char** argv)
   bool log_cache = false;
   bool log_commits = false;
   const char *log_path = nullptr;
-  bool g4trace_enable = false;
-  bool g4trace_verbose = false;
-  const char *g4trace_dest = nullptr;
+  G4TraceConfig g4trace_config;
   std::vector<std::function<extension_t*()>> extensions;
   const char* initrd = NULL;
   const char* dtb_file = NULL;
@@ -443,11 +442,11 @@ int main(int argc, char** argv)
   parser.option(0, "log", 1,
                 [&](const char* s){log_path = s;});
   parser.option(0, "log-g4trace", 0,
-                [&](const char UNUSED *s){g4trace_enable = true;});
+                [&](const char UNUSED *s){g4trace_config.enable = true;});
   parser.option(0, "log-g4trace-debug", 0,
-                [&](const char UNUSED *s){g4trace_verbose = true;});
+                [&](const char UNUSED *s){g4trace_config.verbose = true;});
   parser.option(0, "log-g4trace-dest", 1,
-                [&](const char* s){g4trace_dest = s;});
+                [&](const char* s){g4trace_config.dest = s;});
   FILE *cmd_file = NULL;
   parser.option(0, "debug-cmd", 1, [&](const char* s){
      if ((cmd_file = fopen(s, "r"))==NULL) {
@@ -557,29 +556,20 @@ int main(int argc, char** argv)
     s.get_core(i)->get_mmu()->set_cache_blocksz(blocksz);
   }
 
-  if (g4trace_enable) {
-    if (g4trace_dest == nullptr) {
+  if (g4trace_config.enable) {
+    if (g4trace_config.dest == nullptr) {
       fprintf(stderr, "Error: --gtrace specified but no --gtrace-dest\n");
       exit(-1);
     } else {
-      if (std::filesystem::exists(g4trace_dest)) {
-        fprintf(stderr, "Error: --gtrace-dest '%s' already exits.\n", g4trace_dest);
+      if (std::filesystem::exists(g4trace_config.dest)) {
+        fprintf(stderr, "Error: --gtrace-dest '%s' already exits.\n", g4trace_config.dest);
         exit(-1);
-      } else {
-        std::filesystem::create_directory(g4trace_dest);
-        auto index_filename = std::filesystem::path(g4trace_dest) / "trace.index";
-        std::ofstream index_file(index_filename, std::ios::out);
-
-        index_file << nprocs() << std::endl;
-        index_file << "TRACE_HAS_SEQUENCE_NUMBERS: 0" << std::endl;
-        index_file << "TRACE_HAS_SC_vs_RELAXED_LOCK_TYPE: 0" << std::endl;
-        index_file.close();
       }
     }
   }
 
   s.set_debug(debug);
-  s.configure_log(log, log_commits, g4trace_enable, g4trace_dest, g4trace_verbose);
+  s.configure_log(log, log_commits, &g4trace_config);
   s.set_histogram(histogram);
 
   auto return_code = s.run();

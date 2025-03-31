@@ -36,7 +36,7 @@ processor_t::processor_t(const char* isa_str, const char* priv_str,
                          FILE* log_file, std::ostream& sout_)
 : debug(false), halt_request(HR_NONE), isa(isa_str, priv_str), cfg(cfg), sim(sim), id(id), xlen(0),
   histogram_enabled(false), log_commits_enabled(false),
-  log_file(log_file), g4trace_enabled(false), g4trace_output_file(nullptr), sout_(sout_.rdbuf()), halt_on_reset(halt_on_reset),
+  log_file(log_file), g4trace_output_file(nullptr), sout_(sout_.rdbuf()), halt_on_reset(halt_on_reset),
   in_wfi(false), check_triggers_icount(false),
   impl_table(256, false), extension_enable_table(isa.get_extension_table()),
   last_pc(1), executions(1), TM(cfg->trigger_count)
@@ -183,10 +183,8 @@ void processor_t::enable_log_commits()
   log_commits_enabled = true;
 }
 
-void processor_t::enable_g4trace(FILE* g4trace_output, bool verbose) {
-  g4trace_enabled = true;
-  g4trace_verbose = verbose;
-  g4trace_output_file = g4trace_output;
+void processor_t::enable_g4trace(G4TraceConfig* global) {
+  g4trace_global = global;
 }
 
 void processor_t::reset()
@@ -690,7 +688,7 @@ processor_t::decoded_insn_t processor_t::decode_insn(insn_t insn)
     opcode_cache[idx].replace(insn.bits(), desc);
   }
 
-  auto exec_func = desc->func(xlen, rve, (log_commits_enabled || g4trace_enabled) && log_active);
+  auto exec_func = desc->func(xlen, rve, (log_commits_enabled || get_log_g4trace_enabled()) && log_active);
   auto g4_func = desc->g4trace_decoder;
 
   return {exec_func, g4_func};
