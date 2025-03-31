@@ -26,6 +26,8 @@ Supported options:
                                 to execute the printed command.
     --debug:                Prepend the command with «gdb --args »
     --stdin=F:              Redirect program stdin from F
+    --include-file=F        Copy F to the initrd, in the same directory as
+                                the benchmark binary. F can be a directory.
     --help:                 Show this help."
 }
 
@@ -42,8 +44,10 @@ declare -a SPIKE_ARGS
 SPIKE_ARGS=()
 COMMAND_PREFIX=""
 REDIRECT_STDIN=""
+declare -a EXTRA_FILES
+EXTRA_FILES=()
 
-optspec="spike:,spike-arg:,spike-sdk:,num-procs:,dry-run,keep-tmp,debug,stdin:,help"
+optspec="spike:,spike-arg:,spike-sdk:,num-procs:,dry-run,keep-tmp,debug,stdin:,include-file:,help"
 optspec_short="s:"
 errors="$(getopt -n error-detected -Q --options "${optspec_short}" --long ${optspec} -- "$@" 2>&1 || true)"
 if [[ "$errors" =~ error-detected:.+ ]] ; then
@@ -75,6 +79,9 @@ while [[ $# -gt 0 ]] ; do
     elif [[ "--stdin" = "$1" ]] ; then
         shift
         REDIRECT_STDIN="$1"
+    elif [[ "--include-file" = "$1" ]] ; then
+        shift
+        EXTRA_FILES+=("$1")
     elif [[ "--help" = "$1" ]] ; then
         show_help 2>&1
         exit 0
@@ -158,8 +165,11 @@ null::sysinit:/bin/ln -sf /proc/self/fd/2 /dev/stderr
 " > "$TMP_DIR"/initramfs/etc/inittab
 chmod +x "$TMP_DIR"/initramfs/benchmark-start
 if [ -n "$REDIRECT_STDIN" ] ; then
-    cat < "$REDIRECT_STDIN" > "$TMP_DIR"/initramfs/redirected_stdin
+    cp "$REDIRECT_STDIN" "$TMP_DIR"/initramfs/redirected_stdin
 fi
+for f in "${EXTRA_FILES[@]}" ; do
+    cp -R "$f" "$TMP_DIR"/initramfs/benchmark/
+done
 ( cd "$TMP_DIR"/initramfs/ ; find . -print0 | cpio --null --create --format=newc --quiet > "${INITRAMFS}" )
 
 declare -a COMMAND
