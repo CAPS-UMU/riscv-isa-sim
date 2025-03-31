@@ -338,7 +338,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
 
 G4TraceDecoder g4trace_get_decoder(const string& instr_name) {
   auto ret = g4trace_get_decoder_internal(instr_name);
-  printf("G4TraceDecoder:\t%s\t%p\n", instr_name.c_str(), ret);
+  //printf("G4TraceDecoder:\t%s\t%p\n", instr_name.c_str(), ret);
   return ret;
 }
 
