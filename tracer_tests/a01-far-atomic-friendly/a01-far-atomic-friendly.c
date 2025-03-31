@@ -1,12 +1,10 @@
-#define _GNU_SOURCE  /* for pthread_setaffinity_np */
+#include "g4tracer-interface.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <unistd.h>
-
-#define TRACER_VERBOSE false
-#include "tracer-interface.h"
 
 #define NUM_THREADS 4
 #define ARRAY_ELEMENTS 4
@@ -15,23 +13,14 @@
 pthread_barrier_t barrier;
 atomic_int *atomic_array;
 
-static void bind_current_thread_to_processor(int proc) {
-  cpu_set_t cpuset;
-  CPU_ZERO(&cpuset);
-  CPU_SET(proc, &cpuset);
-  pthread_t current_thread = pthread_self();
-  pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
-}
-
 void* mythread_atomic_inc (void* thr_data) {
-    int thread_id = *((int *) thr_data);
-    bind_current_thread_to_processor(thread_id);
+    g4tracer_init_thread();
 
-    tracer_start_tracing();
+    g4tracer_start_tracing();
 
     pthread_barrier_wait(&barrier);
 
-    tracer_start_ROI();
+    g4tracer_start_ROI();
     int n = 0;
     for(int i = 0; i < OPERATIONS_PER_THREAD; ++i) {
       ++atomic_array[n];  // Fixed variable name
@@ -41,7 +30,7 @@ void* mythread_atomic_inc (void* thr_data) {
         n = 0;
       }
     }
-    tracer_end_ROI();
+    g4tracer_end_ROI();
     return NULL;
 }
 

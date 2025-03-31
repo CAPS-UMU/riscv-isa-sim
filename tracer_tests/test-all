@@ -1,0 +1,29 @@
+#!/bin/bash
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+SCRIPT_COMMAND="$0"
+set -o nounset
+set -o pipefail
+set -o errexit
+trap 'echo "$SCRIPT_COMMAND: error $? at line $LINENO"' ERR
+
+
+for t in ./test00/test00.riscv64gcv \
+         ./test01/test01.gcc.riscv64gc \
+         ./test01/test01.gcc.riscv64gcv \
+         ./test02/test02.gcc.riscv64gc \
+         ./test02/test02.gcc.riscv64gcv \
+         ./test03/test03.gcc.riscv64gc \
+         ./test03/test03.gcc.riscv64gcv \
+         ./test04/test04.gcc.riscv64gc \
+         ./test04/test04.gcc.riscv64gcv \
+         ./test05/test05.gcc.riscv64gc \
+         ./test05/test05.gcc.riscv64gcv \
+         ./test06/test06.gcc.riscv64gc \
+         ./test06/test06.gcc.riscv64gcv
+do
+    for i in {1..10} ; do
+        echo "Test: $(basename "$t") Run: $i"
+        "$t"
+        echo ""
+    done
+done

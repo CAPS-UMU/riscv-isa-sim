@@ -5,3 +5,4 @@
 *.gcc.riscv64gc.objdump
 *.gcc.riscv64gcv
 *.gcc.riscv64gcv.objdump
+test00/*.riscv64gcv

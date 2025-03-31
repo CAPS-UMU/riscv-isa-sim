@@ -1,4 +1,4 @@
-#include "tracer-interface.h"
+#include "g4tracer-interface.h"
 
 const int n = 100000;
 struct P {
@@ -8,7 +8,7 @@ struct P ps[n];
 float r;
 
 int main() {
-  tracer_start_tracing();
+  g4tracer_start_tracing();
   for(int i = 0; i < n; i++) {
     ps[i].x = i;
     ps[i].y = 5;
@@ -16,14 +16,14 @@ int main() {
   }
 
   r = 0;
-  tracer_start_ROI();
+  g4tracer_start_ROI_verbose();
   for(int i = 0 ; i < n ; i++)  { // ROI
     r = r + 
       ps[i].x +
       (ps[i].y + 3.1f) +
       ps[i].z;        
   }
-  tracer_end_ROI();
+  g4tracer_end_ROI_verbose();
 
   return 0;
 }

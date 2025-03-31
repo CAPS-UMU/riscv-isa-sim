@@ -7,8 +7,7 @@
 #include <random>
 #include <cassert>
 
-#define TRACER_VERBOSE false
-#include "tracer-interface.h"
+#include "g4tracer-interface.h"
 
 using namespace std;
 
@@ -59,15 +58,15 @@ void* global_var;
 void measure_latency(uint64_t size_bytes) {
   vector<void*> buffer(size_bytes / sizeof(void*));
   init_buffer(buffer);
-  tracer_start_tracing();
+  g4tracer_start_tracing();
   auto res1 = follow_pointers(buffer[0], buffer.size(), warmup_iterations);
   global_var = res1;
   auto iterations = max(total_accesses / buffer.size(), 2UL);
-  auto ta = tracer_rdcycle();
-  tracer_start_ROI();
+  auto ta = g4tracer_rdcycle();
+  g4tracer_start_ROI();
   auto res2 = follow_pointers(buffer[0], buffer.size(), iterations);
-  tracer_end_ROI();
-  auto tb = tracer_rdcycle();
+  g4tracer_end_ROI();
+  auto tb = g4tracer_rdcycle();
   global_var = res2;
   assert(res1 == res2);
 

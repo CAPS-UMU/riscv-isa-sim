@@ -16,19 +16,19 @@ struct {
 template<int num_vars>
 [[gnu::noinline]] // Non standard, but supported by GCC, ICC and CLang
 void calculate(float& result, size_t total_iterations) {
-  tracer_start_tracing();
+  g4tracer_start_tracing();
   float a[num_vars];
   float one = 1.0f;
   for (size_t i = 0; i < num_vars; ++i) {
     a[i] = 0.0f;
   }
-  tracer_start_ROI();
+  g4tracer_start_ROI();
   for (size_t j = 0; j < total_iterations; ++j) {
     for (int k = 0; k < num_vars; ++k) {
       a[k] = a[k] + one; // TODO: use an intrinsic
     } 
   }
-  tracer_end_ROI();
+  g4tracer_end_ROI();
   for (size_t i = 1; i < num_vars; ++i) {
     a[0] = a[0] + a[i];
   }

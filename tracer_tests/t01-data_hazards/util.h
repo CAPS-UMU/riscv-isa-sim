@@ -8,8 +8,8 @@
 #include <tgmath.h>
 #include <iostream>
 #include <cstring>
-#define TRACER_VERBOSE 0
-#include "tracer-interface.h"
+#define g4tracer_VERBOSE 0
+#include "g4tracer-interface.h"
 
 bool parse_size_arg(const char* arg, const char* name, size_t& var) {
   auto len = strlen(name);
@@ -48,9 +48,9 @@ bool parse_bool_arg(const char* arg, const char* name, bool& var) {
 
 template<typename F, typename ...Args>
 uint64_t measure_cycles(F func, Args&&... args) {
-  auto start = tracer_rdcycle();
+  auto start = g4tracer_rdcycle();
   func(std::forward<Args>(args)...);
-  return tracer_rdcycle() - start;
+  return g4tracer_rdcycle() - start;
 }
 
 template<typename T>
