@@ -15,7 +15,7 @@ trace-all() {
             ( xz -9e "$b/$b.$v.objdump" ; mv "$b/$b.$v.objdump.xz" "${out_dir}/" ) &
             "${SCRIPT_DIR}/../spike-run-fs" \
                 --spike="${SCRIPT_DIR}/../build/spike" \
-                --num-procs=$procs \
+                --num-procs=$(($procs + 1)) \
                 -s--log-g4trace \
                 -s--log-g4trace-dest="${out_dir}/$b.$v" \
                 -- "$b/$b.$v"

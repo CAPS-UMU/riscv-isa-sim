@@ -6,6 +6,7 @@ double a[n];
 double b[n];
 
 int main() {
+  g4tracer_init_thread();
   g4tracer_start_tracing();
   for(int i = 0; i < n; i++) {
     a[i] = i;
