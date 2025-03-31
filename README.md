@@ -23,10 +23,12 @@ The tracer works per hart, no per OS thread/process. To get useful application l
  
 Test programs are in tracer_test.
 
-Example of use:
+Examples of use:
 
    ./spike-run-fs -s--log-g4trace -s--log-g4trace-dest=./trace-output  -- ./tracer_tests/test02/test02.gcc.riscv64gcv
 
+   
+   ./trace-benchmark --procs=5 --trace-destination=/tmp/test-trace tracer_tests/a02-near-atomic-friendly/a02-near-atomic-friendly.gcc.riscv64gc
 
 Known Bugs
 =================

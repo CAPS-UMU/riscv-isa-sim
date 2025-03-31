@@ -1,0 +1,39 @@
+#!/bin/bash
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+SCRIPT_COMMAND="$0"
+set -o nounset
+set -o pipefail
+set -o errexit
+trap 'echo "$SCRIPT_COMMAND: error $? at line $LINENO"' ERR
+
+SPIKE_RUN_FS="$SCRIPT_DIR/spike-run-fs"
+
+show_help() {
+    echo "Usage:
+    $SCRIPT_COMMAND [options] -- program [program arguments]
+
+Supported options:
+    --trace-destination     Specify target directory (will be created)."
+    "$SCRIPT_DIR/spike-run-fs" --help | tail -n+5
+}
+
+if [ $# -eq 0 ] ; then
+    show_help
+    exit 0
+fi
+declare -a ARGS
+ARGS=(-s--log-g4trace)
+
+while [[ $# -gt 0 ]] ; do
+    if [[ "$1" =~ --trace-destination.+ ]] ; then
+        ARGS+=("${1/--trace-destination/-s--log-g4trace-dest}")
+    elif [[ "$1" == "--help" ]] ; then
+        show_help
+        exit 0
+    else
+        ARGS+=("$1")
+    fi
+    shift
+done
+
+exec "$SPIKE_RUN_FS" "${ARGS[@]}"
