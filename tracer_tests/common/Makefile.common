@@ -1,4 +1,5 @@
 # -*- Makefile -*-
+THIS_MAKE_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
 targets:=gcc.riscv64gc gcc.riscv64gcv
 # clang.riscv64 gcc.native gcc.riscv64 gcc.native
@@ -9,10 +10,12 @@ gpp_riscv=riscv64-unknown-linux-gnu-g++ -std=gnu++2b
 gcc_riscv=riscv64-unknown-linux-gnu-gcc -std=gnu23
 clang=clang++
 
-flags_common=-Wall -O3 -ffast-math -static -I../common -g
+g4tracer_interface_dir=$(THIS_MAKE_DIR)/../../g4tracer-interface
+
+flags_common=-Wall -O3 -ffast-math -static -I$(g4tracer_interface_dir) -g
 flags_riscv=-mabi=lp64d # not really necessary 
 
-deps_common=../common/g4tracer-interface.h
+deps_common=$(g4tracer_interface_dir)/g4tracer-interface.h
 
 all: $(executables)
 
