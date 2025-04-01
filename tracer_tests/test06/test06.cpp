@@ -8,7 +8,7 @@ struct P ps[n];
 float r;
 
 int main() {
-  g4tracer_init_thread();
+  g4tracer_init_current_thread();
   g4tracer_start_tracing();
   for(int i = 0; i < n; i++) {
     ps[i].x = i;

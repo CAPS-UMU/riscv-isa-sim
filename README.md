@@ -1,7 +1,7 @@
 Spike RISC-V ISA Simulator with tracer for gems4proc
 ======================================================
 
-This is a fork of Spike that can generate traces for gems4proc. It's requirements and build instructions are the same as the original spike.
+This is a fork of Spike that can generate traces for gems4proc. It's requirements and build instructions are the same as the original Spike.
 
 It adds the following command line options to Spike:
 
@@ -11,23 +11,24 @@ It adds the following command line options to Spike:
  - TODO: add option --log-use-roi-markers (always enabled for now)
  - TODO: add option --log-filter-privileged (always enabled for now)
 
-The build procedure is the same as upstream Spike. You can read or use the build-riscv-tracer script to build the tracer and the required riscv-spike-sdk in a way that has already been tested.
+The build procedure is the same as upstream Spike. You can read or use the build-riscv-tracer script to build the tracer and the required riscv-spike-sdk in a way that has already been tested. Note that building riscv-spike-sdk is sometimes tedious because some of the involved repositories tend to fail temporarily.
  
-Programs can be simulated (and traced) in all the same ways as with upstream Spike. The script spike-run-fs can be used to run a program using full system simulation using the kernel and initrd built with buildroot by riscv-spike-sdk (see buildroot documentation for possible customizations). An additional temporary initrd will be created with the program to be simulated and some supporting files.
+Programs can be simulated (and traced) in all the same ways as with upstream Spike. The script spike-run-fs can be used to run a program using full system simulation using the kernel and initrd built with buildroot by riscv-spike-sdk (see buildroot documentation for possible customizations). An additional temporary initrd will be created with the program to be simulated and some supporting files. See «spike-run-fs --help» and the source of the script for more information.
 
-The traced programs are expected to be annotated using the hint instructions defined in g4tracer-interface.h in tracer_test/common. At least g4tracer_init_thread, g4tracer_start_tracing, g4tracer_start_ROI and g4tracer_end_ROI should be called by each thread that needs to be traced.
+The traced programs are expected to be annotated using the hint instructions defined in g4tracer-interface.h in tracer_test/common. At least g4tracer_init_thread, g4tracer_start_tracing, g4tracer_start_ROI and g4tracer_end_ROI should be called by each thread that needs to be traced. The resulting trace will only contain traces for processors that have called g4tracer_start_tracing. 
  
 Tracing of priviledged (OS) code is not supported. Priviledged instructions will be filtered.
 
-The tracer works per hart, no per OS thread/process. To get useful application level traces, thread migration should be avoided. The recommended way to do this is to bind threads to processors calling g4tracer_init_thread just after thread creation before calling g4tracer_start_tracing. It is also useful to configure spike with an extra core to reduce OS interfence. The resulting trace will only contain traces for processors that have called g4tracer_start_tracing.
+The tracer works per hart, not per OS thread/process. To get useful application level traces, thread migration should be avoided. The recommended way to do this is to bind threads to processors calling g4tracer_init_current_thread just after thread creation before calling g4tracer_start_tracing. The number of processors configured in Spike should be equal or higher than the number of threads used by the program. It is also useful to configure spike with an extra core to reduce interfence from the OS and other processes running in the system. 
  
 Test programs are in tracer_test.
 
 Examples of use:
 
-   ./spike-run-fs -s--log-g4trace -s--log-g4trace-dest=./trace-output  -- ./tracer_tests/test02/test02.gcc.riscv64gcv
+   # The spike-run-fs script  allows to do full system simulation and passing any argument to Spike. It should work with upstream Spike also.
+   ./spike-run-fs -s--log-g4trace -s--log-g4trace-dest=./trace-output -- ./tracer_tests/test02/test02.gcc.riscv64gcv
 
-   
+   # The trace-bencmark script is like spike-run-fs but adds tracing options by default.
    ./trace-benchmark --num-procs=5 --trace-destination=/tmp/test-trace tracer_tests/a02-near-atomic-friendly/a02-near-atomic-friendly.gcc.riscv64gc
 
 Known Bugs

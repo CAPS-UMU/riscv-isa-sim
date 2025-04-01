@@ -14,7 +14,7 @@ pthread_barrier_t barrier;
 atomic_int *atomic_array;
 
 void* mythread_atomic_inc (void* thr_data) {
-    g4tracer_init_thread();
+    g4tracer_init_current_thread();
 
     g4tracer_start_tracing();
 

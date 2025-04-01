@@ -13,8 +13,12 @@
 
 #ifdef __cpp
 #include <cstdint>
+#include <cstdlib>
+#include <cstdbool>
 #else
+#include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #define thread_local __thread
 #endif
 
@@ -48,20 +52,24 @@ static thread_local uint64_t _g4tracer_roi_start_instret;
 
 #define G4TRACER_INTERFACE_FUNC static inline __attribute__((always_inline))
 
-G4TRACER_INTERFACE_FUNC void bind_current_thread_to_processor(int proc) {
+G4TRACER_INTERFACE_FUNC void bind_thread_to_processor(pthread_t thread, int proc) {
   cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
   CPU_SET(proc, &cpuset);
-  pthread_t current_thread = pthread_self();
-  pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+  pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
 }
 
 static atomic_int _g4tracer_thread_id = 0;
 
-G4TRACER_INTERFACE_FUNC void g4tracer_init_thread() {
+G4TRACER_INTERFACE_FUNC void g4tracer_init_thread(pthread_t thread) {
   int np = get_nprocs();
   int id = _g4tracer_thread_id++;
-  bind_current_thread_to_processor(((np - id) % np + np) % np); // bind threads from last available processor to first, so that processor will be free as long as thare are more processors that threads.
+  bind_thread_to_processor(thread, ((np - id) % np + np) % np); // bind threads from last available processor to first, so that processor will be free as long as thare are more processors that threads.
+}
+
+G4TRACER_INTERFACE_FUNC void g4tracer_init_current_thread() {
+  pthread_t current_thread = pthread_self();
+  g4tracer_init_thread(current_thread);
 }
 
 #ifdef __cpp
@@ -181,6 +189,39 @@ G4TRACER_INTERFACE_FUNC void g4tracer_end_ROI_verbose() {
   printf("intructions: %15ld\ncycles:      %15ld\nCPI:         %15f\n", elapsed_instret, elapsed_cycles, ((double) elapsed_cycles) / elapsed_instret);
 #endif
 #endif
+}
+
+struct g4tracer_thread_wrapper_data {
+  void *(*start)(void *);
+  void *arg;
+  bool start_tracing;
+  bool start_roi;
+};
+
+static void *g4tracer_thread_wrapper_func(void *wrapper_data) {
+  struct g4tracer_thread_wrapper_data *data = (struct g4tracer_thread_wrapper_data *) wrapper_data;
+  g4tracer_init_current_thread();
+  bool tracing = data->start_tracing;
+  bool roi = data->start_roi;
+  void *(*start)(void *) = data->start;
+  void *arg = data->arg;
+  free(data);
+  if (tracing) g4tracer_start_tracing();
+  if (roi) g4tracer_start_ROI();
+  return start(arg);
+}
+
+G4TRACER_INTERFACE_FUNC int g4tracer_pthread_create(pthread_t *thr,
+                                                    void *(*start)(void *),
+                                                    void *arg,
+                                                    bool start_tracing,
+                                                    bool start_roi) {
+  struct g4tracer_thread_wrapper_data *data = (struct g4tracer_thread_wrapper_data *) malloc(sizeof(struct g4tracer_thread_wrapper_data));
+  data->start = start;
+  data->arg = arg;
+  data->start_tracing = start_tracing;
+  data->start_roi = start_roi;
+  return pthread_create(thr, NULL, g4tracer_thread_wrapper_func, data);
 }
 
 #pragma GCC diagnostic pop

@@ -5,7 +5,7 @@ double a[n], b[n], c[n];
 double k = 7.23;
 
 int main() {
-  g4tracer_init_thread();
+  g4tracer_init_current_thread();
   g4tracer_start_tracing();
   for(int i = 0; i < n; i++) {
     a[i] = 0.125;
