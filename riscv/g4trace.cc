@@ -319,9 +319,9 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vfwcvt_f_f_v", "vfwcvt_f_x_v", "vfwcvt_f_xu_v", "vfwcvt_rtz_x_f_v", "vfwcvt_rtz_xu_f_v", "vfwcvt_x_f_v", "vfwcvt_xu_f_v", 
                     "vmv1r_v", "vmv2r_v", "vmv4r_v", "vmv8r_v", "vmv_s_x", "vmv_v_i", "vmv_v_v", "vmv_v_x", "vmv_x_s",
                     "vid_v", "viota_m",
-                    "vor_vi", "vor_vv", "vor_vx", "vandn_vv", "vandn_vx", "vand_vi", "vand_vv", "vand_vx",                    
+                    "vor_vi", "vor_vv", "vor_vx", "vandn_vv", "vandn_vx", "vand_vi", "vand_vv", "vand_vx", "vxor_vi", "vxor_vv", "vxor_vx", 
                     "vredand_vs", "vredmax_vs", "vredmaxu_vs", "vredmin_vs", "vredminu_vs", "vredor_vs", "vredsum_vs", "vredxor_vs", 
-                    "vadd_vi", "vadd_vv", "vadd_vx", "vsub_vv", "vsub_vx", 
+                    "vadd_vi", "vadd_vv", "vadd_vx", "vsub_vv", "vsub_vx", "vrsub_vi", "vrsub_vx", 
                     "vwadd_vv", "vwadd_vx", "vwadd_wv", "vwadd_wx", "vwaddu_vv", "vwaddu_vx", "vwaddu_wv", "vwaddu_wx", "vwmacc_vv",
                     "vwmacc_vx", "vwmaccsu_vv", "vwmaccsu_vx", "vwmaccu_vv", "vwmaccu_vx", "vwmaccus_vx", "vasub_vv", "vasubu_vv",
                     "vasub_vx", "vasubu_vx",
@@ -342,7 +342,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vmfle_vf", "vmfle_vv", "vmflt_vf", "vmflt_vv", "vfsgnj_vf", "vfsgnj_vv", "vfsgnjn_vf",
                     "vfsgnjn_vv", "vfsgnjx_vf", "vfsgnjx_vv",
                     "vrgather_vi", "vrgather_vv", "vrgather_vx", "vrgatherei16_vv",
-                    "vfslide1down_vf", "vfslide1up_vf")) {
+                    "vfslide1down_vf", "vfslide1up_vf", "vcompress_vm")) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::GENERIC }; };
   } else if (eq_any(instr_name,
                     "vfmacc_vf", "vfmacc_vv", "vfmadd_vf", "vfmadd_vv", "vfnmacc_vf", "vfnmacc_vv",
