@@ -77,7 +77,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
       }
     };
   } else if (eq_any(instr_name,
-                    "add", "addi", "addiw", "addw", "and", "andi", "auipc", "lui", "or", "ori", "sll", "slli",
+                    "add", "addi", "addiw", "addw", "add_uw", "and", "andn", "andi", "auipc", "lui", "or", "ori", "sll", "slli",
                     "slliw", "sllw", "slt", "slti", "sltiu", "sltu", "sra", "sraiw", "sraw", "srl",
                     "srli", "srliw", "srlw", "sub", "subw", "xor", "xori",
                     "c_add", "c_addi", "c_addi4spn", "c_addw", "c_and", "c_andi",
@@ -160,7 +160,8 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "lb", "lbu", "ld", "lh", "lhu", "lw", "lwu",
                     "fld", "flw", "flq", "flw",
                     "vle8_v", "vle16_v", "vle32_v", "vle64_v", "vle8ff_v", "vle16ff_v", "vle32ff_v", "vle64ff_v"
-                    "vluxei8_v", "vluxei16_v", "vluxei32_v", "vluxei64_v")) {
+                    "vluxei8_v", "vluxei16_v", "vluxei32_v", "vluxei64_v",
+                    "vlm_v")) {
     return [](DECODER_ARGS) {
       G4InstInfo ret { G4InstType::L };
       ret.memory_access_type = g4trace_decode_mem_access_type(insn);
@@ -202,7 +203,9 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
   } else if (eq_any(instr_name,
                     "sb", "sd", "sh", "sw",
                     "vse8_v", "vse16_v", "vse32_v", "vse64_v",
-                    "vsuxei8_v", "vsuxei16_v", "vsuxei32_v", "vsuxei64_v")) {
+                    "vsuxei8_v", "vsuxei16_v", "vsuxei32_v", "vsuxei64_v",
+                    "vsm_v"
+               )) {
     return [](DECODER_ARGS) {
       G4InstInfo ret { G4InstType::S };
       ret.S_base_reg = g4trace_regid_x(insn.rs1());
@@ -243,7 +246,10 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
     };
   } else if (eq_any(instr_name,
                     "amoadd_d", "amoadd_w", "amoand_d", "amoand_w", "amomax_d", "amomaxu_d", "amomaxu_w", "amomax_w", "amomin_d",
-                    "amominu_d", "amominu_w", "amomin_w", "amoor_d", "amoor_w", "amoswap_d", "amoswap_w", "amoxor_d", "amoxor_w")) {
+                    "amominu_d", "amominu_w", "amomin_w", "amoor_d", "amoor_w", "amoswap_d", "amoswap_w", "amoxor_d", "amoxor_w",
+                    "amoadd_h", "amoand_b", "amoand_h", "amocas_b", "amocas_d", "amocas_h", "amocas_q", "amocas_w", "amomax_b",
+                    "amomax_h", "amomaxu_b", "amomaxu_h", "amomin_b", "amomin_h", "amominu_b", "amominu_h", "amoor_b", "amoor_h",
+                    "amoswap_b", "amoswap_h", "amoxor_b", "amoxor_h")) {
     return [](DECODER_ARGS) {
       G4InstInfo ret { G4InstType::RMW };
       ret.memory_access_type = G4VectorMemAccessType::SCALAR;
@@ -283,22 +289,30 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
   } else if (eq_any(instr_name,
                     "fadd_d", "fadd_h", "fadd_q", "fadd_s",
                     "vfadd_vf", "vfadd_vv",
-                    "vfredosum_vs", "vfredusum_vs")) {
+                    "vfredosum_vs", "vfredusum_vs",
+                    "fsub_s", "fsub_d", "fsub_q", "fsub_h",
+                    "vfsub_vf", "vfsub_vv",
+                    "feq_s", "feq_d", "feq_q", "feq_h", "vmfeq_vf", "vmfeq_vv" // Maybe these should be GENERIC
+               )) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::A }; };
   } else if (eq_any(instr_name,
                     "fsqrt_s", "fsqrt_d", "vfrsqrt7_v", "vfsqrt_v", "fsqrt_q", "fsqrt_h")) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::Q }; };
   } else if (eq_any(instr_name,
-                    "fmv_w_x", "fmv_x_w", 
+                    "fmv_w_x", "fmv_x_w", "fmv_d_x", "fmv_x_d", "fmvh_x_d", "fmvp_d_x", "fmvh_x_q", "fmvp_q_x", "fmv_h_x", "fmv_x_h",
                     "fcvt_l_h", "fcvt_lu_h", "fcvt_d_h", "fcvt_h_d", "fcvt_h_l", "fcvt_h_lu", "fcvt_h_q",
                     "fcvt_h_s", "fcvt_h_w", "fcvt_h_wu", "fcvt_q_h", "fcvt_s_h", "fcvt_w_h", "fcvt_wu_h",
                     "fcvt_l_s", "fcvt_lu_s", "fcvt_s_l", "fcvt_s_lu", "fcvt_s_w", "fcvt_s_wu", "fcvt_w_s",
                     "fcvt_wu_s", "fcvt_d_l", "fcvt_d_lu", "fcvt_d_q", "fcvt_d_s", "fcvt_d_w", "fcvt_d_wu",
-                    "fcvt_l_d", "fcvt_lu_d", "fcvt_s_d", "fcvt_w_d", "fcvt_wu_d")) {
+                    "fcvt_l_d", "fcvt_lu_d", "fcvt_s_d", "fcvt_w_d", "fcvt_wu_d",
+                    "fle_s", "flt_s", "fle_d", "flt_d", "fleq_d", "fltq_d", "fleq_s", "fltq_s", "fle_q",
+                    "flt_q", "fleq_q", "fltq_q", "fle_h", "flt_h", "fleq_h", "fltq_h",
+                    "fsgnj_s", "fsgnjn_s", "fsgnjx_s", "fsgnj_d", "fsgnjn_d", "fsgnjx_d", "fsgnj_q", "fsgnjn_q",
+                    "fsgnjx_q", "fsgnj_h", "fsgnjn_h", "fsgnjx_h")) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::GENERIC }; };    
   } else if (eq_any(instr_name, "vsetivli", "vsetvli", "vsetvl")) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::GENERIC }; };
-  } else if (eq_any(instr_name, 
+  } else if (eq_any(instr_name,
                     "vfmv_f_s", "vfmv_s_f", "vfmv_v_f", "vfncvt_f_f_w", "vfncvt_f_x_w", "vfncvt_f_xu_w", "vfncvt_rod_f_f_w",
                     "vfncvt_rtz_x_f_w", "vfncvt_rtz_xu_f_w", "vfncvt_x_f_w", "vfncvt_xu_f_w",
                     "vfcvt_f_x_v", "vfcvt_f_xu_v", "vfcvt_rtz_x_f_v", "vfcvt_rtz_xu_f_v", "vfcvt_x_f_v", "vfcvt_xu_f_v", 
@@ -324,12 +338,21 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vmsgt_vi", "vmsgt_vx", "vmsgtu_vi", "vmsgtu_vx", "vmsif_m", "vmsle_vi", "vmsle_vv", "vmsle_vx",
                     "vmsleu_vi", "vmsleu_vv", "vmsleu_vx", "vmslt_vv", "vmslt_vx", "vmsltu_vv", "vmsltu_vx", "vmsne_vi",
                     "vmsne_vv", "vmsne_vx", "vmsof_m",
-                    "vmerge_vim", "vmerge_vvm", "vmerge_vxm", "vfirst_m")) {
+                    "vmerge_vim", "vmerge_vvm", "vmerge_vxm", "vfirst_m",
+                    "vmfle_vf", "vmfle_vv", "vmflt_vf", "vmflt_vv", "vfsgnj_vf", "vfsgnj_vv", "vfsgnjn_vf",
+                    "vfsgnjn_vv", "vfsgnjx_vf", "vfsgnjx_vv",
+                    "vrgather_vi", "vrgather_vv", "vrgather_vx", "vrgatherei16_vv",
+                    "vfslide1down_vf", "vfslide1up_vf")) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::GENERIC }; };
   } else if (eq_any(instr_name,
                     "vfmacc_vf", "vfmacc_vv", "vfmadd_vf", "vfmadd_vv", "vfnmacc_vf", "vfnmacc_vv",
-                    "vfnmadd_vf", "vfnmadd_vv", "vfnmsac_vf", "vfnmsac_vv", "vfnmsub_vf", "vfnmsub_vv")) {
+                    "vfnmadd_vf", "vfnmadd_vv", "vfnmsac_vf", "vfnmsac_vv", "vfnmsub_vf", "vfnmsub_vv",
+                    "vfmsac_vf", "vfmsac_vv", "vfmsub_vf", "vfmsub_vv")) {
+
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::M }; };
+  } else if (eq_any(instr_name,
+                    "csrrc", "csrrci", "csrrs", "csrrsi", "csrrw", "csrrwi")) {
+    return [](DECODER_ARGS) { return G4InstInfo { G4InstType::GENERIC }; };
   } else {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::UNKNOWN }; };        
   }
@@ -486,15 +509,15 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     assert(g4i.S_base_reg != g4trace_regid_invalid);
     assert(g4i.S_data_reg != g4trace_regid_invalid);
     assert(count_if(read_regs.begin(), read_regs.end(), [&](auto x){ return g4trace_regid_from_commit_log_reg_id(x.first) == g4i.S_base_reg; }) == 1);
-    assert(count_if(read_regs.begin(), read_regs.end(), [&](auto x){ return g4trace_regid_from_commit_log_reg_id(x.first) == g4i.S_data_reg; }) == 1);
+    assert(count_if(read_regs.begin(), read_regs.end(), [&](auto x){ return g4trace_regid_from_commit_log_reg_id(x.first) == g4i.S_data_reg; }) == 1 || stores.empty()); // vector stores may write 0 elements (and hence read 0 data registers)
 
+    // print the base register as x, the rest as y (must be data) TODO: this is wrong for masked stores
+    fprintf(log_file, "x%d", g4i.S_base_reg.id);
     if (count_if(read_regs.begin(), read_regs.end(), [&](auto x){ return g4trace_regid_from_commit_log_reg_id(x.first) != g4i.S_base_reg; }) == 0) {
-      // only the base_reg has been read, so the data register must be the same
-      assert(g4i.S_base_reg == g4i.S_data_reg); // is this true in all cases?
+      // only the base_reg has been read, so the data register must be the same, or it has not been read (0 element vector store)
+      assert(g4i.S_base_reg == g4i.S_data_reg || stores.empty()); // is this true in all cases?
       assert(read_regs.size() == 1);
     } else {
-      //print the base register as x, the rest as y (must be data)
-      fprintf(log_file, "x%d", g4i.S_base_reg.id);
       for (auto item : read_regs) {
         auto g4rid = g4trace_regid_from_commit_log_reg_id(item.first);
         if (g4rid != g4i.S_base_reg
