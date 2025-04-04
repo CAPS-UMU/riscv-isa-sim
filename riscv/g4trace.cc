@@ -41,6 +41,12 @@ bool eq_any(const T& first, const Args&... rest) {
   return ((first == rest) || ...);
 }
 
+static reg_t commit_log_read_value_xpr(processor_t *p, reg_t reg_id) {
+  auto i = p->get_state()->log_reg_read.find(reg_id << 4);
+  assert(i != p->get_state()->log_reg_read.end());
+  return i->second.v[0];
+}
+
 static G4VectorMemAccessType g4trace_decode_mem_access_type(insn_t insn) {
   auto last2bits = insn.bits() & 0x3;
   auto next5bits = (insn.bits() & 0x7f) >> 2;
@@ -109,7 +115,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
       } else {
         ret.type = G4InstType::j;
       }
-      ret.target_address = p->get_state()->XPR[insn.rvc_rs1()] & ~reg_t(1);
+      ret.target_address = commit_log_read_value_xpr(p, insn.rvc_rs1()) & ~reg_t(1);
       return ret;
     };
 /* } else if (eq_any(instr_name, "c_jalr")) {
@@ -146,14 +152,14 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
       } else {
         ret.type = G4InstType::c;
       }
-      ret.target_address = (p->get_state()->XPR[insn.rs1()] + insn.i_imm()) & ~reg_t(1);
+      ret.target_address = (commit_log_read_value_xpr(p, insn.rs1()) + insn.i_imm()) & ~reg_t(1);
       return ret;
     };
   } else if (eq_any(instr_name, "c_jalr")) {
     return [](DECODER_ARGS) {
       G4InstInfo ret;
       ret.type = G4InstType::c;
-      ret.target_address = p->get_state()->XPR[insn.rvc_rs1()] & ~reg_t(1);
+      ret.target_address = commit_log_read_value_xpr(p, insn.rvc_rs1()) & ~reg_t(1);
       return ret;
     };
   } else if (eq_any(instr_name,
@@ -342,7 +348,8 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vmfle_vf", "vmfle_vv", "vmflt_vf", "vmflt_vv", "vfsgnj_vf", "vfsgnj_vv", "vfsgnjn_vf",
                     "vfsgnjn_vv", "vfsgnjx_vf", "vfsgnjx_vv",
                     "vrgather_vi", "vrgather_vv", "vrgather_vx", "vrgatherei16_vv",
-                    "vfslide1down_vf", "vfslide1up_vf", "vcompress_vm")) {
+                    "vfslide1down_vf", "vfslide1up_vf", "vcompress_vm",
+                      "vnsra_wi", "vnsra_wv", "vnsra_wx", "vnsrl_wi", "vnsrl_wv", "vnsrl_wx")) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::GENERIC }; };
   } else if (eq_any(instr_name,
                     "vfmacc_vf", "vfmacc_vv", "vfmadd_vf", "vfmadd_vv", "vfnmacc_vf", "vfnmacc_vv",
