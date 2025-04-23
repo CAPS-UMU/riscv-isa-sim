@@ -497,7 +497,7 @@ int main(int argc, char** argv)
 
   if (initrd && check_file_exists(initrd)) {
     size_t initrd_size = get_file_size(initrd);
-    const reg_t initrd_max_end = 0xffffffffUL - 0x10000;
+    const reg_t initrd_max_end = 0xffffffffUL - 0x1000;
     const reg_t initrd_max_start = initrd_max_end - initrd_size;
     for (auto& m : mems) {
       if (initrd_size && (initrd_size + 0x1000) < m.second->size()) {
