@@ -28,6 +28,7 @@ Supported options:
     --stdin=F:              Redirect program stdin from F
     --include-file=F        Copy F to the initrd, in the same directory as
                                 the benchmark binary. F can be a directory.
+    --shell:                Run /bin/sh before (or instead of) the benchmark.
     --help:                 Show this help."
 }
 
@@ -46,8 +47,9 @@ COMMAND_PREFIX=""
 REDIRECT_STDIN=""
 declare -a EXTRA_FILES
 EXTRA_FILES=()
+RUN_SHELL=no
 
-optspec="spike:,spike-arg:,spike-sdk:,num-procs:,dry-run,keep-tmp,debug,stdin:,include-file:,help"
+optspec="spike:,spike-arg:,spike-sdk:,num-procs:,dry-run,keep-tmp,debug,stdin:,include-file:,shell,help"
 optspec_short="s:"
 errors="$(getopt -n error-detected -Q --options "${optspec_short}" --long ${optspec} -- "$@" 2>&1 || true)"
 if [[ "$errors" =~ error-detected:.+ ]] ; then
@@ -82,6 +84,8 @@ while [[ $# -gt 0 ]] ; do
     elif [[ "--include-file" = "$1" ]] ; then
         shift
         EXTRA_FILES+=("$1")
+    elif [[ "--shell" = "$1" ]] ; then
+        RUN_SHELL=yes
     elif [[ "--help" = "$1" ]] ; then
         show_help 2>&1
         exit 0
@@ -96,12 +100,16 @@ while [[ $# -gt 0 ]] ; do
     shift
 done
 if [[ $# -lt 1 ]] ; then
-    echo "Benchmark not specified" 2>&1
-    exit 1
+    if [[ "$RUN_SHELL" != "yes" ]] ; then
+        echo "Benchmark not specified" 2>&1
+        exit 1
+    fi
+    BENCHMARK=""
+else
+    BENCHMARK="${1}"
+    shift
+    BENCHMARK_ARGS=("$@")
 fi
-BENCHMARK="$1"
-shift
-BENCHMARK_ARGS=("$@")
 
 KERNEL_IMAGE="${SPIKE_SDK}"/build/linux/arch/riscv/boot/Image
 SPIKE="${SPIKE:-${SPIKE_SDK}/toolchain/bin/spike}"
@@ -121,22 +129,30 @@ TMP_DIR="$(mktemp -d)"
 INITRAMFS="$TMP_DIR"/initramfs.cpio
 mkdir "$TMP_DIR"/initramfs/
 mkdir "$TMP_DIR"/initramfs/benchmark/
-cp "$BENCHMARK" "$TMP_DIR"/initramfs/benchmark/
+if [ -n "$BENCHMARK" ] ; then
+    cp "$BENCHMARK" "$TMP_DIR"/initramfs/benchmark/
+fi
 {
     printf "#!/bin/sh\n\n"
     printf "cd /benchmark\n"
     printf "if test -f /proc/sys/kernel/perf_event_paranoid ; then echo -1 > /proc/sys/kernel/perf_event_paranoid ; fi\n"
     printf "if test -f /proc/sys/kernel/perf_user_access ; then echo 2 > /proc/sys/kernel/perf_user_access ; fi\n"
-    printf "echo 'Starting benchmark'\n"
-    printf "set -x\n"
-    if [ -n "$REDIRECT_STDIN" ] ; then
-        printf "< /redirected_stdin "
+    if [ "$RUN_SHELL" = "yes" ] ; then
+        printf "echo 'Starting /bin/sh'\n"
+        printf "/bin/sh\n"
     fi
-    printf "/benchmark/%q" "$(basename "${BENCHMARK}")"
-    if [[ "${#BENCHMARK_ARGS[@]}" -gt 0 ]] ; then
-        printf " %q" "${BENCHMARK_ARGS[@]}"
+    if [ -n "$BENCHMARK" ] ; then
+        printf "echo 'Starting benchmark'\n"
+        printf "set -x\n"
+        if [ -n "$REDIRECT_STDIN" ] ; then
+            printf "< /redirected_stdin "
+        fi
+        printf "/benchmark/%q" "$(basename "${BENCHMARK}")"
+        if [[ "${#BENCHMARK_ARGS[@]}" -gt 0 ]] ; then
+            printf " %q" "${BENCHMARK_ARGS[@]}"
+        fi
+        printf "\n"
     fi
-    printf "\n"
 } > "$TMP_DIR"/initramfs/benchmark-start
 
 mkdir "$TMP_DIR"/initramfs/etc/
