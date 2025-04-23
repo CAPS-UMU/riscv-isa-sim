@@ -21,6 +21,7 @@
 #include <cinttypes>
 #include <sstream>
 #include <filesystem>
+#include <algorithm>
 #include "g4trace.h"
 #include "../VERSION"
 
@@ -492,19 +493,28 @@ int main(int argc, char** argv)
     }
   }
 
+  bool initrd_ok = initrd == nullptr;
+
   if (initrd && check_file_exists(initrd)) {
     size_t initrd_size = get_file_size(initrd);
+    const reg_t initrd_max_end = 0xffffffffUL - 0x10000;
+    const reg_t initrd_max_start = initrd_max_end - initrd_size;
     for (auto& m : mems) {
       if (initrd_size && (initrd_size + 0x1000) < m.second->size()) {
-         reg_t initrd_end = m.first + m.second->size() - 0x1000;
+         reg_t initrd_end = std::min(m.first + m.second->size() - 0x1000, initrd_max_start);
          reg_t initrd_start = initrd_end - initrd_size;
-         cfg.initrd_bounds = std::make_pair(initrd_start, initrd_end);
-         read_file_bytes(initrd, 0, m.second, initrd_start - m.first, initrd_size);
-         break;
+         if (initrd_start >= m.first) {
+           cfg.initrd_bounds = std::make_pair(initrd_start, initrd_end);
+           read_file_bytes(initrd, 0, m.second, initrd_start - m.first, initrd_size);
+           initrd_ok = true;
+           break;
+         }
       }
     }
   }
 
+  assert(initrd_ok);
+  
   if (cfg.explicit_hartids) {
     if (nprocs.overridden() && (nprocs() != cfg.nprocs())) {
       std::cerr << "Number of specified hartids ("
