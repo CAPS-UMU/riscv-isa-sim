@@ -11,6 +11,15 @@ struct G4TraceConfig {
   int num_traces = 0; // number of harts that have started tracing
 };
 
+struct G4TracePerProcState {
+  G4TraceConfig *global = nullptr;
+  bool has_started = false; // The first instruction address ha been printed (to avoid doing it twice if the START_TRACING hint has appeared already)
+  FILE *output_file = nullptr;
+  reg_t lastpc = 0;
+  bool setpc_done = false;
+  reg_t last_setpc = 0;
+};
+
 struct G4TraceRegId {
   int id;
   bool operator==(const G4TraceRegId& X) const = default;
@@ -57,8 +66,8 @@ typedef G4InstInfo (*G4TraceDecoder)(processor_t *p, reg_t pc, insn_t insn);
 
 G4TraceDecoder g4trace_get_decoder(const std::string& instr_name);
 void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder decoder);
-FILE *g4trace_open_trace_file(G4TraceConfig *global);
-void g4trace_close_trace_file(G4TraceConfig *global, FILE *f);
+void g4trace_open_trace_file(G4TracePerProcState& s);
+void g4trace_close_trace_file(G4TracePerProcState& s);
 void g4trace_write_index(G4TraceConfig *global);
 
 #endif

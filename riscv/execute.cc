@@ -14,8 +14,8 @@ static void commit_log_and_g4trace_reset(processor_t* p)
   p->get_state()->log_reg_write.clear();
   p->get_state()->log_mem_read.clear();
   p->get_state()->log_mem_write.clear();
-  p->get_state()->g4trace_setpc_done = false;
-  p->get_state()->g4trace_last_setpc = 0;
+  p->get_state()->g4trace.setpc_done = false;
+  p->get_state()->g4trace.last_setpc = 0;
 
 }
 

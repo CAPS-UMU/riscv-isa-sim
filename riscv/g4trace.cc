@@ -407,8 +407,6 @@ static void g4trace_print_memory_access_addresses(const commit_log_mem_t& access
 void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder decoder) {
   if (!p->get_log_active()) return;
 
-  FILE *log_file = p->get_g4trace_output_file();
-
   auto& read_regs = p->get_state()->log_reg_read;
   auto& written_regs = p->get_state()->log_reg_write;
   auto& loads = p->get_state()->log_mem_read;
@@ -419,7 +417,10 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
 
   if (priv && p->get_log_filter_privileged()) return;
 
-  if (p->get_log_g4trace_verbose()) {
+  auto& g4ts = p->get_log_g4_trace_state();
+  FILE *log_file = g4ts.output_file;
+
+  if (p->get_log_g4_trace_config()->verbose) {
     fprintf(log_file, "{ %-32s } ", p->get_disassembler()->disassemble(insn).c_str());
     fflush(log_file); // TODO remove this, now here to ensure output is complete in case of assert.
   }
@@ -429,7 +430,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   bool ignore_csrs = true;
   bool ignore_vstatus = true;
 
-  auto diffpc = pc - p->get_state()->g4trace_lastpc;
+  auto diffpc = pc - g4ts.lastpc;
 
   if (g4i.type == G4InstType::GENERIC) {
     fprintf(log_file, "%ld", diffpc);
@@ -483,8 +484,8 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     assert(g4i.target_address != g4trace_invalid_target_address);
   } else if (g4i.type == G4InstType::START_TRACING) {
     if (!p->get_log_g4trace_has_started()) {
-      p->get_state()->g4trace_lastpc = pc + 4; // Address of next instruction, which will be the first in the trace
-      fprintf(log_file, "%lx\n", p->get_state()->g4trace_lastpc);
+      g4ts.lastpc = pc + 4; // Address of next instruction, which will be the first in the trace
+      fprintf(log_file, "%lx\n", g4ts.lastpc);
       p->set_log_g4trace_has_started();
       return; // don't print operands
     } else {
@@ -496,7 +497,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     fprintf(log_file, "CLEAR\n");
     return; // don't print operands, don't update lastpc
   } else if (g4i.type == G4InstType::END_ROI) {
-    fprintf(log_file, "END %lx\n", p->get_state()->g4trace_lastpc);
+    fprintf(log_file, "END %lx\n", g4ts.lastpc);
     fflush(log_file);
     // TODO maybe fclose(log_file);
     return; // don't print operands, don't update lastpc
@@ -505,11 +506,11 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     assert(g4i.type == G4InstType::UNKNOWN);
   }
 
-  assert(p->get_log_g4trace_verbose() || g4i.type != G4InstType::UNKNOWN);
+  assert(p->get_log_g4_trace_config()->verbose || g4i.type != G4InstType::UNKNOWN);
   assert(loads.empty() || (g4i.type == G4InstType::L || g4i.type == G4InstType::LA || g4i.type == G4InstType::RMW));
   assert(stores.empty() || (g4i.type == G4InstType::S || g4i.type == G4InstType::SA || g4i.type == G4InstType::RMW));
 
-  p->get_state()->g4trace_lastpc = pc;
+  g4ts.lastpc = pc;
 
   // print x and y register operands for S (and not RMW), and x operands for anything else
   if (g4i.type == G4InstType::S/* || g4i.type == G4InstType::RMW*/) {
@@ -540,7 +541,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
       if ((!commit_log_reg_id_is_csr(item.first) || !ignore_csrs)
         && (!commit_log_reg_id_is_vstatus(item.first) || !ignore_vstatus)) {
         fprintf(log_file, "x%d", g4rid.id);
-        }
+      }
     }
   }
 
@@ -566,13 +567,13 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     assert(g4i.type == G4InstType::B || g4i.type == G4InstType::C || g4i.type == G4InstType::c || g4i.type == G4InstType::J || g4i.type == G4InstType::j || g4i.type == G4InstType::r);
     fprintf(log_file, "t%ld", g4i.target_address - pc);
     if (g4i.type == G4InstType::B) {
-      if (p->get_state()->g4trace_setpc_done) {
+      if (g4ts.setpc_done) {
         fprintf(log_file, "*");
-        assert(g4i.target_address == p->get_state()->g4trace_last_setpc);
+        assert(g4i.target_address == g4ts.last_setpc);
       }
     } else {
-      assert(p->get_state()->g4trace_setpc_done);
-      assert(g4i.target_address == p->get_state()->g4trace_last_setpc);
+      assert(g4ts.setpc_done);
+      assert(g4i.target_address == g4ts.last_setpc);
     }
   }
 
@@ -595,22 +596,23 @@ void g4trace_write_index(G4TraceConfig *global) {
   }
 }
 
-FILE *g4trace_open_trace_file(G4TraceConfig *global) {
-  assert(global->enable);
-  if (!filesystem::exists(global->dest)) {
-    filesystem::create_directory(global->dest);
+void g4trace_open_trace_file(G4TracePerProcState& s) {
+  assert(s.global->enable);
+  assert(s.output_file == nullptr);
+  if (!filesystem::exists(s.global->dest)) {
+    filesystem::create_directory(s.global->dest);
   }
   stringstream name;
-  name << "trace-" << setw(4) << setfill('0') << global->num_traces << ".trc";
-  filesystem::path p = filesystem::path(global->dest) / name.str();
+  name << "trace-" << setw(4) << setfill('0') << s.global->num_traces << ".trc";
+  filesystem::path p = filesystem::path(s.global->dest) / name.str();
   FILE* f = fopen(p.c_str(), "w"); // TODO: gzip / lzma
-  ++global->num_traces;
-  return f;
+  ++s.global->num_traces;
+  s.output_file = f;
 }
 
-void g4trace_close_trace_file(G4TraceConfig *global, FILE *f)
-{
-  if (f) {
-    fclose(f);
+void g4trace_close_trace_file(G4TracePerProcState& s) {
+  if (s.output_file) {
+    fclose(s.output_file);
+    s.output_file = nullptr;
   }
 }

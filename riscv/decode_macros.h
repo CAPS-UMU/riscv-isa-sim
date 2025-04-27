@@ -242,8 +242,8 @@ static inline bool is_aligned(const unsigned val, const unsigned pos)
   do { p->check_pc_alignment(x); \
        npc = sext_xlen(x); \
        if (DECODE_MACRO_USAGE_LOGGED) { \
-         STATE.g4trace_setpc_done = true; \
-         STATE.g4trace_last_setpc = npc; \
+         STATE.g4trace.setpc_done = true; \
+         STATE.g4trace.last_setpc = npc; \
        } \
      } while (0)
 

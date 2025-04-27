@@ -267,7 +267,7 @@ sim_t::~sim_t()
 {
   g4trace_write_index(g4trace_global);
   for (size_t i = 0; i < procs.size(); i++) {
-    g4trace_close_trace_file(g4trace_global, procs[i]->get_g4trace_output_file());
+    g4trace_close_trace_file(procs[i]->get_log_g4_trace_state());
     delete procs[i];
   }
   delete debug_mmu;

@@ -192,9 +192,7 @@ struct state_t
   reg_t last_inst_priv;
   int last_inst_xlen;
   int last_inst_flen;
-  reg_t g4trace_lastpc = 0;
-  bool g4trace_setpc_done = false;
-  reg_t g4trace_last_setpc = 0;
+  G4TracePerProcState g4trace;
 
   elp_t elp;
 
@@ -266,15 +264,17 @@ public:
   bool get_log_active() const { return log_active; }
   void set_log_active(bool v) {
     log_active = v;
-    if (get_log_g4trace_enabled() && !g4trace_output_file) {
-      g4trace_output_file = g4trace_open_trace_file(g4trace_global);
+    if (get_log_g4trace_enabled() && !get_state()->g4trace.output_file) {
+      g4trace_open_trace_file(get_log_g4_trace_state());
     }
   }
   bool get_log_filter_privileged() const { return log_filter_privileged; }
-  bool get_log_g4trace_enabled() const { return g4trace_global && g4trace_global->enable; }
-  bool get_log_g4trace_verbose() const { return g4trace_global && g4trace_global->verbose; }
-  bool get_log_g4trace_has_started() const { return g4trace_has_started; }
-  void set_log_g4trace_has_started() { assert(!g4trace_has_started); g4trace_has_started = true; }
+  const G4TracePerProcState& get_log_g4_trace_state() const { return get_state()->g4trace; }
+  G4TracePerProcState& get_log_g4_trace_state() { return get_state()->g4trace; }
+  const G4TraceConfig* get_log_g4_trace_config() const { return get_state()->g4trace.global; }
+  bool get_log_g4trace_enabled() const { return get_log_g4_trace_config() && get_log_g4_trace_config()->enable; }
+  bool get_log_g4trace_has_started() const { return get_log_g4_trace_state().has_started; }
+  void set_log_g4trace_has_started() { assert(!get_log_g4trace_has_started()); get_state()->g4trace.has_started = true; }
   void reset();
   void step(size_t n); // run for n cycles
   void put_csr(int which, reg_t val);
@@ -282,6 +282,7 @@ public:
   reg_t get_csr(int which, insn_t insn, bool write, bool peek = 0);
   reg_t get_csr(int which) { return get_csr(which, insn_t(0), false, true); }
   mmu_t* get_mmu() { return mmu; }
+  const state_t* get_state() const { return &state; }
   state_t* get_state() { return &state; }
   unsigned get_xlen() const { return xlen; }
   unsigned get_const_xlen() const {
@@ -351,7 +352,6 @@ public:
   const disassembler_t* get_disassembler() { return disassembler; }
 
   FILE *get_log_file() { return log_file; }
-  FILE *get_g4trace_output_file() { return g4trace_output_file; }
 
   void register_base_insn(insn_desc_t insn) {
     register_insn(insn, false /* is_custom */);
@@ -405,9 +405,6 @@ private:
   FILE *log_file;
   bool log_active = false; // TODO: add option --log-use-roi-markers
   bool log_filter_privileged = true; // TODO: add option
-  G4TraceConfig *g4trace_global = nullptr;
-  bool g4trace_has_started = false; // The first instruction address ha been printed (to avoid doing it twice if the START_TRACING hint has appeared already)
-  FILE *g4trace_output_file = nullptr;
   std::ostream sout_; // needed for socket command interface -s, also used for -d and -l, but not for --log
   bool halt_on_reset;
   bool in_wfi;
