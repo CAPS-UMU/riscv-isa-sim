@@ -61,6 +61,7 @@ static void help(int exit_code = 1)
   fprintf(stderr, "  --log-commits         Generate a log of commits info\n");
   fprintf(stderr, "  --log-g4trace         TODO\n");
   fprintf(stderr, "  --log-g4trace-dest    TODO\n");
+  fprintf(stderr, "  --log-g4trace-max-instructions N    Stop tracing after N instructions (per processor)\n");
   fprintf(stderr, "  --log-g4trace-debug   TODO\n");
   fprintf(stderr, "  --extension=<name>    Specify RoCC Extension\n");
   fprintf(stderr, "                          This flag can be used multiple times.\n");
@@ -448,6 +449,8 @@ int main(int argc, char** argv)
                 [&](const char UNUSED *s){g4trace_config.verbose = true;});
   parser.option(0, "log-g4trace-dest", 1,
                 [&](const char* s){g4trace_config.dest = s;});
+  parser.option(0, "log-g4trace-max-instructions", 1,
+                [&](const char* s){g4trace_config.max_trace_instructions = atoul_safe(s);});
   FILE *cmd_file = NULL;
   parser.option(0, "debug-cmd", 1, [&](const char* s){
      if ((cmd_file = fopen(s, "r"))==NULL) {

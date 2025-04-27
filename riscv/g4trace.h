@@ -3,12 +3,15 @@
 
 #include "config.h"
 #include "memif.h"
+#include <cstdint>
+#include <limits>
 
 struct G4TraceConfig {
   bool enable = false;
   bool verbose = false;
   const char *dest = nullptr;
   int num_traces = 0; // number of harts that have started tracing
+  uint64_t max_trace_instructions = std::numeric_limits<decltype(max_trace_instructions)>::max();
 };
 
 struct G4TracePerProcState {
@@ -18,6 +21,7 @@ struct G4TracePerProcState {
   reg_t lastpc = 0;
   bool setpc_done = false;
   reg_t last_setpc = 0;
+  uint64_t instructions_traced = 0;
 };
 
 struct G4TraceRegId {

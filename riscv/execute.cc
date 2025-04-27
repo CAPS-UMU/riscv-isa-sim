@@ -226,7 +226,8 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
   }
   p->update_histogram(pc);
 
-  if (fetch.insn.bits() == 0x40105013 /* srai zero, zero, 1 */) {
+  if (fetch.insn.bits() == 0x40105013 /* srai zero, zero, 1 */
+      || p->get_state()->g4trace.instructions_traced >= p->get_log_g4trace_max_instructions()) {
     // End ROI
     p->set_log_active(false);
   }

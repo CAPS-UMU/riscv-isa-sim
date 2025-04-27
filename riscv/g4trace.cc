@@ -420,6 +420,13 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   auto& g4ts = p->get_log_g4_trace_state();
   FILE *log_file = g4ts.output_file;
 
+  if (g4ts.instructions_traced >= p->get_log_g4trace_max_instructions()) {
+    fprintf(log_file, "END %lx\n", p->get_state()->g4trace.lastpc);
+    fflush(log_file);
+    // TODO maybe fclose(log_file);
+    return; // don't print operands, don't update lastpc
+  }
+
   if (p->get_log_g4_trace_config()->verbose) {
     fprintf(log_file, "{ %-32s } ", p->get_disassembler()->disassemble(insn).c_str());
     fflush(log_file); // TODO remove this, now here to ensure output is complete in case of assert.
@@ -578,6 +585,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   }
 
   fprintf(log_file, "\n");
+  ++g4ts.instructions_traced;
 }
 
 

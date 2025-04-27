@@ -6,6 +6,7 @@
 #include "g4trace.h"
 #include "trap.h"
 #include "abstract_device.h"
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -275,6 +276,7 @@ public:
   bool get_log_g4trace_enabled() const { return get_log_g4_trace_config() && get_log_g4_trace_config()->enable; }
   bool get_log_g4trace_has_started() const { return get_log_g4_trace_state().has_started; }
   void set_log_g4trace_has_started() { assert(!get_log_g4trace_has_started()); get_state()->g4trace.has_started = true; }
+  uint64_t get_log_g4trace_max_instructions() const { return get_log_g4_trace_config()->max_trace_instructions; }
   void reset();
   void step(size_t n); // run for n cycles
   void put_csr(int which, reg_t val);
