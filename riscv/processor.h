@@ -265,7 +265,7 @@ public:
   bool get_log_active() const { return log_active; }
   void set_log_active(bool v) {
     log_active = v;
-    if (get_log_g4trace_enabled() && !get_state()->g4trace.output_file) {
+    if (get_log_g4trace_enabled() && !get_state()->g4trace.out) {
       g4trace_open_trace_file(get_log_g4_trace_state());
     }
   }

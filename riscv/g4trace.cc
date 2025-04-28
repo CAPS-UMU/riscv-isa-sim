@@ -372,7 +372,7 @@ G4TraceDecoder g4trace_get_decoder(const string& instr_name) {
   return ret;
 }
 
-static void g4trace_print_memory_access_addresses(const commit_log_mem_t& accesses, const G4InstInfo& g4i, FILE* log_file) {
+static void g4trace_print_memory_access_addresses(const commit_log_mem_t& accesses, const G4InstInfo& g4i, ostream *out) {
   const auto& first = *accesses.begin();
   auto addr_first = get<0>(first);
   auto size = get<2>(first);
@@ -383,23 +383,24 @@ static void g4trace_print_memory_access_addresses(const commit_log_mem_t& access
 
   if (g4i.memory_access_type ==  G4VectorMemAccessType::SCALAR) {
     assert(num_items == 1);
-    fprintf(log_file, " %lx %d", addr_first, size);
+    *out << " " << hex << addr_first << " " << dec << size;
   } else if (g4i.memory_access_type ==  G4VectorMemAccessType::CONTIGUOUS) {
-    fprintf(log_file, "s%de%lu %lx", size, num_items, addr_first); // assuming that the first address is the lowest
+    *out << "s" << size << "e" << num_items << " " << hex << addr_first << " " << dec;
   } else if (g4i.memory_access_type ==  G4VectorMemAccessType::INDEXED) {
-    fprintf(log_file, "s%de%lu ", size, num_items);
+    *out << "s" << size << "e" << num_items;
     for (auto i = accesses.cbegin(); i != accesses.cend(); i++) {
       if (i != accesses.cbegin()) {
-        fprintf(log_file, ",");
+        *out << ",";
       }
-      fprintf(log_file, "%lx", get<0>(*i));
+      *out << " " << hex << get<0>(*i);
     }
+    *out << dec;
   } else {
-    fprintf(log_file, " TODO access_tcype=%d ", (int) g4i.memory_access_type);
+    *out << " TODO access_tcype=" << (int) g4i.memory_access_type << " ";
     for (auto item : accesses) {
       auto addr = get<0>(item);
       auto size = get<2>(item);
-      fprintf(log_file, " %lx %d", addr, size);
+      *out << " " << hex << addr << dec << " " << size;
     }
   }
 }
@@ -418,18 +419,18 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   if (priv && p->get_log_filter_privileged()) return;
 
   auto& g4ts = p->get_log_g4_trace_state();
-  FILE *log_file = g4ts.output_file;
-
+  auto out = g4ts.out;
+  
   if (g4ts.instructions_traced >= p->get_log_g4trace_max_instructions()) {
-    fprintf(log_file, "END %lx\n", p->get_state()->g4trace.lastpc);
-    fflush(log_file);
+    *out << "END " << hex << g4ts.lastpc << dec << endl;
+    out->flush();
     // TODO maybe fclose(log_file);
     return; // don't print operands, don't update lastpc
   }
 
   if (p->get_log_g4_trace_config()->verbose) {
-    fprintf(log_file, "{ %-32s } ", p->get_disassembler()->disassemble(insn).c_str());
-    fflush(log_file); // TODO remove this, now here to ensure output is complete in case of assert.
+    *out << "{ " << left << setw(32) << p->get_disassembler()->disassemble(insn) << " } ";
+    out->flush(); // TODO remove this, now here to ensure output is complete in case of assert.
   }
 
   G4InstInfo g4i = decoder(p, pc, insn);
@@ -438,61 +439,62 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   bool ignore_vstatus = true;
 
   auto diffpc = pc - g4ts.lastpc;
-
+  const char* prefix;
+  
   if (g4i.type == G4InstType::GENERIC) {
-    fprintf(log_file, "%ld", diffpc);
+    prefix = "";
   } else if (g4i.type == G4InstType::A) {
-    fprintf(log_file, "A%ld", diffpc);
+    prefix = "A";
   } else if (g4i.type == G4InstType::M) {
-    fprintf(log_file, "M%ld", diffpc);
+    prefix = "M";
   } else if (g4i.type == G4InstType::D) {
-    fprintf(log_file, "D%ld", diffpc);
+    prefix = "D";
   } else if (g4i.type == G4InstType::Q) {
-    fprintf(log_file, "Q%ld", diffpc);
+    prefix = "Q";
   } else if (g4i.type == G4InstType::L) {
-    fprintf(log_file, "L%ld", diffpc);
+    prefix = "L";
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
   } else if (g4i.type == G4InstType::LA) {
-    fprintf(log_file, "LA%ld", diffpc);
+    prefix = "LA";
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
   } else if (g4i.type == G4InstType::S) {
-    fprintf(log_file, "S%ld", diffpc);
+    prefix = "S";
     assert(g4i.S_base_reg != g4trace_regid_invalid);
     assert(g4i.S_data_reg != g4trace_regid_invalid);
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
   } else if (g4i.type == G4InstType::SA) {
-    fprintf(log_file, "SA%ld", diffpc);
+    prefix = "SA";
     assert(g4i.S_base_reg != g4trace_regid_invalid);
     assert(g4i.S_data_reg != g4trace_regid_invalid);
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
   } else if (g4i.type == G4InstType::RMW) {
-    fprintf(log_file, "RMW%ld", diffpc);
+    prefix = "RMW";
     assert(g4i.S_base_reg != g4trace_regid_invalid);
     assert(g4i.S_data_reg != g4trace_regid_invalid);
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
     assert(loads.size() == stores.size()); // TODO: check that this is necessarily true (maybe the stores don't always happen?);
   } else if (g4i.type == G4InstType::B) {
-    fprintf(log_file, "B%ld", diffpc);
+    prefix = "B";
     assert(g4i.target_address != g4trace_invalid_target_address);
   } else if (g4i.type == G4InstType::C) {
-    fprintf(log_file, "C%ld", diffpc);
+    prefix = "C";
     assert(g4i.target_address != g4trace_invalid_target_address);
   } else if (g4i.type == G4InstType::J) {
-    fprintf(log_file, "J%ld", diffpc);
+    prefix = "J";
     assert(g4i.target_address != g4trace_invalid_target_address);
   } else if (g4i.type == G4InstType::j) {
-    fprintf(log_file, "r%ld", diffpc);
+    prefix = "j";
     assert(g4i.target_address != g4trace_invalid_target_address);
   } else if (g4i.type == G4InstType::r) {
-    fprintf(log_file, "r%ld", diffpc);
+    prefix = "r";
     assert(g4i.target_address != g4trace_invalid_target_address);
   } else if (g4i.type == G4InstType::c) {
-    fprintf(log_file, "c%ld", diffpc);
+    prefix = "c";
     assert(g4i.target_address != g4trace_invalid_target_address);
   } else if (g4i.type == G4InstType::START_TRACING) {
     if (!p->get_log_g4trace_has_started()) {
       g4ts.lastpc = pc + 4; // Address of next instruction, which will be the first in the trace
-      fprintf(log_file, "%lx\n", g4ts.lastpc);
+      *out << dec << g4ts.lastpc << endl;
       p->set_log_g4trace_has_started();
       return; // don't print operands
     } else {
@@ -501,17 +503,19 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
       return;
     }
   } else if (g4i.type == G4InstType::CLEAR) {
-    fprintf(log_file, "CLEAR\n");
+    *out << "CLEAR" << endl;
     return; // don't print operands, don't update lastpc
   } else if (g4i.type == G4InstType::END_ROI) {
-    fprintf(log_file, "END %lx\n", g4ts.lastpc);
-    fflush(log_file);
+    *out << "END " << hex << g4ts.lastpc << dec << endl;
+    out->flush();
     // TODO maybe fclose(log_file);
     return; // don't print operands, don't update lastpc
   } else {
-    fprintf(log_file, "UNKNOWN%ld", diffpc);
+    prefix = "UNKNOWN";
     assert(g4i.type == G4InstType::UNKNOWN);
   }
+
+  *out << prefix << diffpc;
 
   assert(p->get_log_g4_trace_config()->verbose || g4i.type != G4InstType::UNKNOWN);
   assert(loads.empty() || (g4i.type == G4InstType::L || g4i.type == G4InstType::LA || g4i.type == G4InstType::RMW));
@@ -527,7 +531,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     assert(count_if(read_regs.begin(), read_regs.end(), [&](auto x){ return g4trace_regid_from_commit_log_reg_id(x.first) == g4i.S_data_reg; }) == 1 || stores.empty()); // vector stores may write 0 elements (and hence read 0 data registers)
 
     // print the base register as x, the rest as y (must be data) TODO: this is wrong for masked stores
-    fprintf(log_file, "x%d", g4i.S_base_reg.id);
+    *out << "x" << g4i.S_base_reg.id;
     if (count_if(read_regs.begin(), read_regs.end(), [&](auto x){ return g4trace_regid_from_commit_log_reg_id(x.first) != g4i.S_base_reg; }) == 0) {
       // only the base_reg has been read, so the data register must be the same, or it has not been read (0 element vector store)
       assert(g4i.S_base_reg == g4i.S_data_reg || stores.empty()); // is this true in all cases?
@@ -538,7 +542,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
         if (g4rid != g4i.S_base_reg
             && (!commit_log_reg_id_is_csr(item.first) || !ignore_csrs)
             && (!commit_log_reg_id_is_vstatus(item.first) || !ignore_vstatus)) {
-          fprintf(log_file, "y%d", g4rid.id);
+          *out << "y" << g4rid.id;
         }
       }
     }
@@ -547,7 +551,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
       auto g4rid = g4trace_regid_from_commit_log_reg_id(item.first);
       if ((!commit_log_reg_id_is_csr(item.first) || !ignore_csrs)
         && (!commit_log_reg_id_is_vstatus(item.first) || !ignore_vstatus)) {
-        fprintf(log_file, "x%d", g4rid.id);
+        *out << "x" << g4rid.id;
       }
     }
   }
@@ -558,24 +562,24 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     auto g4rid = g4trace_regid_from_commit_log_reg_id(item.first);
     if (((item.first & 0xf) != 4 || !ignore_csrs)
       && (item.first & 0xf) != 3) {
-      fprintf(log_file, "z%d", g4rid.id);
-      }
+      *out << "z" << g4rid.id;
+    }
   }
 
   if (!loads.empty()) {
-    g4trace_print_memory_access_addresses(loads, g4i, log_file);
+    g4trace_print_memory_access_addresses(loads, g4i, out);
   }
 
   if (!stores.empty() && g4i.type != G4InstType::RMW) { // don't print stores for RMWs, they sould be the same as loads
-    g4trace_print_memory_access_addresses(stores, g4i, log_file);
+    g4trace_print_memory_access_addresses(stores, g4i, out);
   }
 
   if (g4i.target_address != g4trace_invalid_target_address) {
     assert(g4i.type == G4InstType::B || g4i.type == G4InstType::C || g4i.type == G4InstType::c || g4i.type == G4InstType::J || g4i.type == G4InstType::j || g4i.type == G4InstType::r);
-    fprintf(log_file, "t%ld", g4i.target_address - pc);
+    *out << "t" << (g4i.target_address - pc);
     if (g4i.type == G4InstType::B) {
       if (g4ts.setpc_done) {
-        fprintf(log_file, "*");
+        *out << "*";
         assert(g4i.target_address == g4ts.last_setpc);
       }
     } else {
@@ -584,7 +588,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     }
   }
 
-  fprintf(log_file, "\n");
+  *out << endl;
   ++g4ts.instructions_traced;
 }
 
@@ -606,21 +610,21 @@ void g4trace_write_index(G4TraceConfig *global) {
 
 void g4trace_open_trace_file(G4TracePerProcState& s) {
   assert(s.global->enable);
-  assert(s.output_file == nullptr);
+  assert(s.out == nullptr);
   if (!filesystem::exists(s.global->dest)) {
     filesystem::create_directory(s.global->dest);
   }
   stringstream name;
   name << "trace-" << setw(4) << setfill('0') << s.global->num_traces << ".trc";
   filesystem::path p = filesystem::path(s.global->dest) / name.str();
-  FILE* f = fopen(p.c_str(), "w"); // TODO: gzip / lzma
+  s.out = new ofstream(p);
   ++s.global->num_traces;
-  s.output_file = f;
 }
 
 void g4trace_close_trace_file(G4TracePerProcState& s) {
-  if (s.output_file) {
-    fclose(s.output_file);
-    s.output_file = nullptr;
+  if (s.out) {
+    s.out->flush();
+    delete s.out;
+    s.out = nullptr;
   }
 }

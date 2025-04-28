@@ -5,6 +5,7 @@
 #include "memif.h"
 #include <cstdint>
 #include <limits>
+#include <ostream>
 
 struct G4TraceConfig {
   bool enable = false;
@@ -17,7 +18,7 @@ struct G4TraceConfig {
 struct G4TracePerProcState {
   G4TraceConfig *global = nullptr;
   bool has_started = false; // The first instruction address ha been printed (to avoid doing it twice if the START_TRACING hint has appeared already)
-  FILE *output_file = nullptr;
+  std::ostream *out = nullptr;
   reg_t lastpc = 0;
   bool setpc_done = false;
   reg_t last_setpc = 0;
