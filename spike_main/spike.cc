@@ -63,6 +63,7 @@ static void help(int exit_code = 1)
   fprintf(stderr, "  --log-g4trace-dest    TODO\n");
   fprintf(stderr, "  --log-g4trace-max-instructions N    Stop tracing after N instructions (per processor)\n");
   fprintf(stderr, "  --log-g4trace-debug   TODO\n");
+  fprintf(stderr, "  --log-g4trace-compression C         Conpression config (lzma, zstd, none, lzma-3, zstd-13, …)\n");
   fprintf(stderr, "  --extension=<name>    Specify RoCC Extension\n");
   fprintf(stderr, "                          This flag can be used multiple times.\n");
   fprintf(stderr, "  --extlib=<name>       Shared library to load\n");
@@ -451,6 +452,16 @@ int main(int argc, char** argv)
                 [&](const char* s){g4trace_config.dest = s;});
   parser.option(0, "log-g4trace-max-instructions", 1,
                 [&](const char* s){g4trace_config.max_trace_instructions = atoul_safe(s);});
+  parser.option(0, "log-g4trace-compression", 1,
+                [&](const char* s){
+                  std::string str; int i;
+                  if (!g4trace_parse_compression_config(s, str, i)) {
+                    fprintf(stderr, "Invalid compression config '%s'. Valid values are 'none', 'zstd', 'lzma', 'lzma-3', 'zstd-13'…\n", s);
+                    exit(-1);
+                  } else {
+                    g4trace_config.compression = s;
+                  }
+                });
   FILE *cmd_file = NULL;
   parser.option(0, "debug-cmd", 1, [&](const char* s){
      if ((cmd_file = fopen(s, "r"))==NULL) {

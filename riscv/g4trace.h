@@ -13,12 +13,14 @@ struct G4TraceConfig {
   const char *dest = nullptr;
   int num_traces = 0; // number of harts that have started tracing
   uint64_t max_trace_instructions = std::numeric_limits<decltype(max_trace_instructions)>::max();
+  std::string compression = "lzma-3";//"zstd-13";// "none";
 };
 
 struct G4TracePerProcState {
   G4TraceConfig *global = nullptr;
   bool has_started = false; // The first instruction address ha been printed (to avoid doing it twice if the START_TRACING hint has appeared already)
   std::ostream *out = nullptr;
+  std::ostream *file_stream = nullptr; // uncompressed stream if out is compressed
   reg_t lastpc = 0;
   bool setpc_done = false;
   reg_t last_setpc = 0;
@@ -74,5 +76,6 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
 void g4trace_open_trace_file(G4TracePerProcState& s);
 void g4trace_close_trace_file(G4TracePerProcState& s);
 void g4trace_write_index(G4TraceConfig *global);
+bool g4trace_parse_compression_config(const std::string& opts, std::string& method, int& preset);
 
 #endif

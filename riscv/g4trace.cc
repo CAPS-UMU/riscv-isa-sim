@@ -1,7 +1,8 @@
 #include "g4trace.h"
 #include "processor.h"
 #include "disasm.h"
-
+#include "compress/lzmastream.h"
+#include "compress/zstdstream.h"
 #include <filesystem>
 
 using namespace std;
@@ -608,16 +609,50 @@ void g4trace_write_index(G4TraceConfig *global) {
   }
 }
 
+bool g4trace_parse_compression_config(const string& opts, string& method, int& preset) {
+  auto minus = opts.find("-");
+  if (minus == string::npos) {
+    method = opts;
+    preset = 0;
+  } else {
+    method = opts.substr(0, minus);
+    preset = stoi(opts.substr(minus + 1));
+  }
+  if (method == "none") {
+    return true;
+  } else if (method == "lzma") {
+    if (preset == 0) preset = 3;
+    return true;
+  } else if (method == "zstd") {
+    if (preset == 0) preset = 13;
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void g4trace_open_trace_file(G4TracePerProcState& s) {
   assert(s.global->enable);
-  assert(s.out == nullptr);
+  assert(s.out == nullptr && s.file_stream == nullptr);
   if (!filesystem::exists(s.global->dest)) {
     filesystem::create_directory(s.global->dest);
   }
   stringstream name;
   name << "trace-" << setw(4) << setfill('0') << s.global->num_traces << ".trc";
   filesystem::path p = filesystem::path(s.global->dest) / name.str();
-  s.out = new ofstream(p);
+  string comp;
+  int preset;
+  int r = g4trace_parse_compression_config(s.global->compression, comp, preset);
+  assert(r);
+  if (comp == "none") {
+    s.out = new ofstream(p);
+  } else if (comp == "zstd") {
+    s.file_stream = new ofstream(p);
+    s.out = new ZstdOStream(*s.file_stream, preset);
+  } else if (comp == "lzma") {
+    s.file_stream = new ofstream(p);
+    s.out = new LzmaOStream(*s.file_stream, preset);
+  }
   ++s.global->num_traces;
 }
 
@@ -626,5 +661,10 @@ void g4trace_close_trace_file(G4TracePerProcState& s) {
     s.out->flush();
     delete s.out;
     s.out = nullptr;
+    if (s.file_stream) {
+      s.file_stream->flush();
+      delete s.file_stream;
+      s.file_stream = nullptr;
+    }
   }
 }
