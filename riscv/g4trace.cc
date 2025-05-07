@@ -376,7 +376,7 @@ G4TraceDecoder g4trace_get_decoder(const string& instr_name) {
 static void g4trace_print_memory_access_addresses(const commit_log_mem_t& accesses, const G4InstInfo& g4i, ostream *out) {
   const auto& first = *accesses.begin();
   auto addr_first = get<0>(first);
-  auto size = get<2>(first);
+  int size = get<2>(first);
   for (const auto& i : accesses) {
     assert(get<2>(i) == size); // all accesses have the same size
   }
