@@ -424,8 +424,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   
   if (g4ts.instructions_traced >= p->get_log_g4trace_max_instructions()) {
     *out << "END " << hex << g4ts.lastpc << dec << endl;
-    out->flush();
-    // TODO maybe fclose(log_file);
+    // TODO maybe out->close();
     return; // don't print operands, don't update lastpc
   }
 
@@ -495,7 +494,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   } else if (g4i.type == G4InstType::START_TRACING) {
     if (!p->get_log_g4trace_has_started()) {
       g4ts.lastpc = pc + 4; // Address of next instruction, which will be the first in the trace
-      *out << dec << g4ts.lastpc << endl;
+      *out << dec << g4ts.lastpc << "\n";
       p->set_log_g4trace_has_started();
       return; // don't print operands
     } else {
@@ -504,12 +503,11 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
       return;
     }
   } else if (g4i.type == G4InstType::CLEAR) {
-    *out << "CLEAR" << endl;
+    *out << "CLEAR\n";
     return; // don't print operands, don't update lastpc
   } else if (g4i.type == G4InstType::END_ROI) {
     *out << "END " << hex << g4ts.lastpc << dec << endl;
-    out->flush();
-    // TODO maybe fclose(log_file);
+    // TODO maybe out->close();
     return; // don't print operands, don't update lastpc
   } else {
     prefix = "UNKNOWN";
@@ -589,7 +587,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     }
   }
 
-  *out << endl;
+  *out << '\n';
   ++g4ts.instructions_traced;
 }
 
@@ -599,9 +597,9 @@ void g4trace_write_index(G4TraceConfig *global) {
     if (global->num_traces > 0) {
       auto index_filename = filesystem::path(global->dest) / "trace.index";
       ofstream index_file(index_filename, ios::out);
-      index_file << global->num_traces << endl;
-      index_file << "TRACE_HAS_SEQUENCE_NUMBERS: 0" << endl;
-      index_file << "TRACE_HAS_SC_vs_RELAXED_LOCK_TYPE: 0" << endl;
+      index_file << global->num_traces << "\n";
+      index_file << "TRACE_HAS_SEQUENCE_NUMBERS: 0\n";
+      index_file << "TRACE_HAS_SC_vs_RELAXED_LOCK_TYPE: 0\n";
       index_file.close();
     } else {
       cerr << "No gems4proc trace created. It seems no processor used the START_TRACING hint." << endl;
