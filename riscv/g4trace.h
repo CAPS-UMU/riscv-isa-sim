@@ -20,7 +20,6 @@ struct G4TracePerProcState {
   G4TraceConfig *global = nullptr;
   bool has_started = false; // The first instruction address ha been printed (to avoid doing it twice if the START_TRACING hint has appeared already)
   std::ostream *out = nullptr;
-  std::ostream *file_stream = nullptr; // uncompressed stream if out is compressed
   reg_t lastpc = 0;
   bool setpc_done = false;
   reg_t last_setpc = 0;

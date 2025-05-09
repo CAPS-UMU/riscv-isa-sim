@@ -1,3 +1,4 @@
+#include <fstream>
 #include <iostream>
 #include <streambuf>
 #include <lzma.h>
@@ -72,9 +73,16 @@ public:
 
 class LzmaOStream : public std::ostream {
 private:
+  std::ostream *underlying_ofstream = nullptr;
   LzmaOStreamBuf buf;
 public:
   LzmaOStream(std::ostream &os, int preset = 6) : std::ostream(&buf), buf(os, preset) {}
+  LzmaOStream(const std::string &filename, int preset = 6) : std::ostream(&buf), underlying_ofstream(new std::ofstream(filename)), buf(*underlying_ofstream, preset) { }
+  ~LzmaOStream() {
+    if (underlying_ofstream) {
+      delete underlying_ofstream;
+    }
+  }
   int close() { return buf.close(); }
 };
 
@@ -139,11 +147,17 @@ public:
 
 class LzmaIStream : public std::istream {
 private:
+  std::istream *underlying_ifstream = nullptr;
   LzmaIStreamBuf buf;
 public:
   LzmaIStream(std::istream &is) : std::istream(&buf), buf(is) {}
+  LzmaIStream(const std::string &filename) : std::istream(&buf), underlying_ifstream(new std::ifstream(filename)), buf(*underlying_ifstream) { }
+  ~LzmaIStream() {
+    if (underlying_ifstream) {
+      delete underlying_ifstream;
+    }
+  }
 };
-
 
 
 /*

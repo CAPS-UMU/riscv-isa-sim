@@ -631,7 +631,7 @@ bool g4trace_parse_compression_config(const string& opts, string& method, int& p
 
 void g4trace_open_trace_file(G4TracePerProcState& s) {
   assert(s.global->enable);
-  assert(s.out == nullptr && s.file_stream == nullptr);
+  assert(s.out == nullptr);
   if (!filesystem::exists(s.global->dest)) {
     filesystem::create_directory(s.global->dest);
   }
@@ -645,11 +645,9 @@ void g4trace_open_trace_file(G4TracePerProcState& s) {
   if (comp == "none") {
     s.out = new ofstream(p);
   } else if (comp == "zstd") {
-    s.file_stream = new ofstream(p);
-    s.out = new ZstdOStream(*s.file_stream, preset);
+    s.out = new ZstdOStream(p, preset);
   } else if (comp == "lzma") {
-    s.file_stream = new ofstream(p);
-    s.out = new LzmaOStream(*s.file_stream, preset);
+    s.out = new LzmaOStream(p, preset);
   }
   ++s.global->num_traces;
 }
@@ -659,10 +657,5 @@ void g4trace_close_trace_file(G4TracePerProcState& s) {
     s.out->flush();
     delete s.out;
     s.out = nullptr;
-    if (s.file_stream) {
-      s.file_stream->flush();
-      delete s.file_stream;
-      s.file_stream = nullptr;
-    }
   }
 }
