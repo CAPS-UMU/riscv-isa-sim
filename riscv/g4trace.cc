@@ -494,7 +494,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   } else if (g4i.type == G4InstType::START_TRACING) {
     if (!p->get_log_g4trace_has_started()) {
       g4ts.lastpc = pc + 4; // Address of next instruction, which will be the first in the trace
-      *out << dec << g4ts.lastpc << "\n";
+      *out << hex << g4ts.lastpc << dec << "\n";
       p->set_log_g4trace_has_started();
       return; // don't print operands
     } else {
