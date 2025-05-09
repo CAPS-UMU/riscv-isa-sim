@@ -1,3 +1,4 @@
+#include <fstream>
 #include <iostream>
 #include <streambuf>
 #include <vector>
@@ -73,17 +74,13 @@ public:
 
 class ZstdOStream : public std::ostream {
 private:
-  std::ostream *underlying_ofstream = nullptr;
+  std::ofstream underlying_ofstream;
   ZstdOStreamBuf buf;
 public:
   ZstdOStream(std::ostream &os, int compressionLevel = 15) : std::ostream(&buf), buf(os, compressionLevel) { }
-  ZstdOStream(const std::string &filename, int compressionLevel = 15) : std::ostream(&buf), underlying_ofstream(new std::ofstream(filename)), buf(*underlying_ofstream, compressionLevel) { }
-  ~ZstdOStream() {
-    if (underlying_ofstream) {
-      delete underlying_ofstream;
-    }
+  ZstdOStream(const std::string &filename, int compressionLevel = 15) : std::ostream(&buf), buf(underlying_ofstream, compressionLevel) {
+    underlying_ofstream.open(filename);
   }
-
   int close() { return buf.close(); }
 };
 
@@ -164,6 +161,7 @@ public:
   ~ZstdIStream() {
     if (underlying_ifstream) {
       delete underlying_ifstream;
+      underlying_ifstream = nullptr;
     }
   }
 };

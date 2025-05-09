@@ -73,15 +73,12 @@ public:
 
 class LzmaOStream : public std::ostream {
 private:
-  std::ostream *underlying_ofstream = nullptr;
+  std::ofstream underlying_ofstream; // used only if the filename based constructor is used
   LzmaOStreamBuf buf;
 public:
   LzmaOStream(std::ostream &os, int preset = 6) : std::ostream(&buf), buf(os, preset) {}
-  LzmaOStream(const std::string &filename, int preset = 6) : std::ostream(&buf), underlying_ofstream(new std::ofstream(filename)), buf(*underlying_ofstream, preset) { }
-  ~LzmaOStream() {
-    if (underlying_ofstream) {
-      delete underlying_ofstream;
-    }
+  LzmaOStream(const std::string &filename, int preset = 6) : std::ostream(&buf), buf(underlying_ofstream, preset) {
+    underlying_ofstream.open(filename);
   }
   int close() { return buf.close(); }
 };
@@ -155,6 +152,7 @@ public:
   ~LzmaIStream() {
     if (underlying_ifstream) {
       delete underlying_ifstream;
+      underlying_ifstream = nullptr;
     }
   }
 };
