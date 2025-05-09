@@ -63,7 +63,7 @@ static void help(int exit_code = 1)
   fprintf(stderr, "  --log-g4trace-dest    TODO\n");
   fprintf(stderr, "  --log-g4trace-max-instructions N    Stop tracing after N instructions (per processor)\n");
   fprintf(stderr, "  --log-g4trace-debug   TODO\n");
-  fprintf(stderr, "  --log-g4trace-compression C         Conpression config (lzma, zstd, none, lzma-3, zstd-13, …)\n");
+  fprintf(stderr, "  --log-g4trace-compression C         Compression configuration (lzma, zstd, none, lzma-3, zstd-13, …)\n");
   fprintf(stderr, "  --extension=<name>    Specify RoCC Extension\n");
   fprintf(stderr, "                          This flag can be used multiple times.\n");
   fprintf(stderr, "  --extlib=<name>       Shared library to load\n");
