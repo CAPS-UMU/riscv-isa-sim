@@ -153,16 +153,12 @@ public:
 
 class ZstdIStream : public std::istream {
 private:
-  std::istream *underlying_ifstream = nullptr;
+  std::ifstream underlying_ifstream;
   ZstdIStreamBuf buf;
 public:
   ZstdIStream(std::istream &is) : std::istream(&buf), buf(is) {}
-  ZstdIStream(const std::string &filename) : std::istream(&buf), underlying_ifstream(new std::ifstream(filename)), buf(*underlying_ifstream) { }
-  ~ZstdIStream() {
-    if (underlying_ifstream) {
-      delete underlying_ifstream;
-      underlying_ifstream = nullptr;
-    }
+  ZstdIStream(const std::string &filename) : std::istream(&buf), buf(underlying_ifstream) {
+    underlying_ifstream.open(filename);
   }
 };
 

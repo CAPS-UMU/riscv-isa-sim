@@ -144,16 +144,12 @@ public:
 
 class LzmaIStream : public std::istream {
 private:
-  std::istream *underlying_ifstream = nullptr;
+  std::ifstream underlying_ifstream;
   LzmaIStreamBuf buf;
 public:
   LzmaIStream(std::istream &is) : std::istream(&buf), buf(is) {}
-  LzmaIStream(const std::string &filename) : std::istream(&buf), underlying_ifstream(new std::ifstream(filename)), buf(*underlying_ifstream) { }
-  ~LzmaIStream() {
-    if (underlying_ifstream) {
-      delete underlying_ifstream;
-      underlying_ifstream = nullptr;
-    }
+  LzmaIStream(const std::string &filename) : std::istream(&buf), buf(underlying_ifstream) {
+    underlying_ifstream.open(filename);
   }
 };
 
