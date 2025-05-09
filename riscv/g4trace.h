@@ -37,6 +37,7 @@ enum class G4InstType {
   GENERIC,
   L, LA, LE,
   S, SA, RMW,
+  LR, SC,
   B, C, c, J, j, r,
   A, M, D, Q,
   START_TRACING,

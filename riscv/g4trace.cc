@@ -239,13 +239,13 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
     };
   } else if (eq_any(instr_name, "lr_d", "lr_w")) {
     return [](DECODER_ARGS) {
-      G4InstInfo ret { G4InstType::LA };
+      G4InstInfo ret { G4InstType::LR };
       ret.memory_access_type = G4VectorMemAccessType::SCALAR;
       return ret;
     };
   } else if (eq_any(instr_name, "sc_d", "sc_w")) {
     return [](DECODER_ARGS) {
-      G4InstInfo ret { G4InstType::SA };
+      G4InstInfo ret { G4InstType::SC };
       ret.memory_access_type = G4VectorMemAccessType::SCALAR;
       ret.S_base_reg = g4trace_regid_x(insn.rs1());
       ret.S_data_reg= g4trace_regid_x(insn.rs2());
@@ -457,6 +457,9 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   } else if (g4i.type == G4InstType::LA) {
     prefix = "LA";
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
+  } else if (g4i.type == G4InstType::LR) {
+    prefix = "LR";
+    assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
   } else if (g4i.type == G4InstType::S) {
     prefix = "S";
     assert(g4i.S_base_reg != g4trace_regid_invalid);
@@ -464,6 +467,11 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
   } else if (g4i.type == G4InstType::SA) {
     prefix = "SA";
+    assert(g4i.S_base_reg != g4trace_regid_invalid);
+    assert(g4i.S_data_reg != g4trace_regid_invalid);
+    assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
+  } else if (g4i.type == G4InstType::SC) {
+    prefix = "SC";
     assert(g4i.S_base_reg != g4trace_regid_invalid);
     assert(g4i.S_data_reg != g4trace_regid_invalid);
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
@@ -517,13 +525,16 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   *out << prefix << diffpc;
 
   assert(p->get_log_g4_trace_config()->verbose || g4i.type != G4InstType::UNKNOWN);
-  assert(loads.empty() || (g4i.type == G4InstType::L || g4i.type == G4InstType::LA || g4i.type == G4InstType::RMW));
-  assert(stores.empty() || (g4i.type == G4InstType::S || g4i.type == G4InstType::SA || g4i.type == G4InstType::RMW));
+  assert(loads.empty() || (g4i.type == G4InstType::L || g4i.type == G4InstType::LA || g4i.type == G4InstType::LR || g4i.type == G4InstType::RMW));
+  assert(stores.empty() || (g4i.type == G4InstType::S || g4i.type == G4InstType::SA || g4i.type == G4InstType::SC || g4i.type == G4InstType::RMW));
 
   g4ts.lastpc = pc;
 
-  // print x and y register operands for S (and not RMW), and x operands for anything else
-  if (g4i.type == G4InstType::S/* || g4i.type == G4InstType::RMW*/) {
+  // print x and y register operands for S (and SA and SC, and not RMW), and x operands for anything else
+  if (g4i.type == G4InstType::S
+      || g4i.type == G4InstType::SA
+      || g4i.type == G4InstType::SC
+      /* || g4i.type == G4InstType::RMW*/) {
     assert(g4i.S_base_reg != g4trace_regid_invalid);
     assert(g4i.S_data_reg != g4trace_regid_invalid);
     assert(count_if(read_regs.begin(), read_regs.end(), [&](auto x){ return g4trace_regid_from_commit_log_reg_id(x.first) == g4i.S_base_reg; }) == 1);
