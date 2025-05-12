@@ -12,11 +12,11 @@ if [ -e "build" ] ; then
     exit 1
 fi
 
-if [ ! -e "${SCRIPT_DIR}/riscv-spike-sdk/toolchain/env.sh" ] ; then
+if [ ! -e "${SCRIPT_DIR}/riscv-spike-sdk/toolchain/prefix-env.sh" ] ; then
     ( cd "${SCRIPT_DIR}" ; ./build-riscv-spike-sdk )
 fi
 
-. "${SCRIPT_DIR}/riscv-spike-sdk/toolchain/env.sh"
+. "${SCRIPT_DIR}/riscv-spike-sdk/toolchain/prefix-env.sh"
 
 mkdir build
 cd build
