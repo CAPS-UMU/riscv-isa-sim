@@ -99,42 +99,6 @@ processor_t::~processor_t()
   delete disassembler;
 }
 
-static void bad_option_string(const char *option, const char *value,
-                              const char *msg)
-{
-  fprintf(stderr, "error: bad %s option '%s'. %s\n", option, value, msg);
-  abort();
-}
-
-static std::string get_string_token(std::string str, const char delimiter, size_t& pos)
-{
-  size_t _pos = pos;
-  while (pos < str.length() && str[pos] != delimiter) ++pos;
-  return str.substr(_pos, pos - _pos);
-}
-
-static bool check_pow2(int val)
-{
-  return ((val & (val - 1))) == 0;
-}
-
-static std::string strtolower(const char* str)
-{
-  std::string res;
-  for (const char *r = str; *r; r++)
-    res += std::tolower(*r);
-  return res;
-}
-
-static int xlen_to_uxl(int xlen)
-{
-  if (xlen == 32)
-    return 1;
-  if (xlen == 64)
-    return 2;
-  abort();
-}
-
 void state_t::reset(processor_t* const proc, reg_t max_isa)
 {
   pc = DEFAULT_RSTVEC;
@@ -170,7 +134,7 @@ void processor_t::set_debug(bool value)
   debug = value;
 
   for (auto e : custom_extensions)
-    e.second->set_debug(value);
+    e.second->set_debug(value, *this);
 }
 
 void processor_t::set_histogram(bool value)
@@ -181,6 +145,7 @@ void processor_t::set_histogram(bool value)
 void processor_t::enable_log_commits()
 {
   log_commits_enabled = true;
+  mmu->flush_tlb(); // the TLB caches this setting
 }
 
 void processor_t::enable_g4trace(G4TraceConfig* global) {
@@ -205,7 +170,7 @@ void processor_t::reset()
   for (auto e : custom_extensions) { // reset any extensions
     for (auto &csr: e.second->get_csrs(*this))
       state.add_csr(csr->address, csr);
-    e.second->reset();
+    e.second->reset(*this);
   }
 
   if (sim)
@@ -263,10 +228,10 @@ void processor_t::set_mmu_capability(int cap)
       break;
     case IMPL_MMU_SV57:
       set_impl(IMPL_MMU_SV57, true);
-      // Fall through
+      [[fallthrough]];
     case IMPL_MMU_SV48:
       set_impl(IMPL_MMU_SV48, true);
-      // Fall through
+      [[fallthrough]];
     case IMPL_MMU_SV39:
       set_impl(IMPL_MMU_SV39, true);
       set_impl(IMPL_MMU, true);
@@ -452,7 +417,10 @@ void processor_t::take_trap(trap_t& t, reg_t epc)
   // An unexpected trap - a trap when SDT is 1 - traps to M-mode
   if ((state.prv <= PRV_S && bit < max_xlen) &&
       (((vsdeleg >> bit) & 1)  || ((hsdeleg >> bit) & 1))) {
-    reg_t s = state.sstatus->read();
+    // Trap is handled in VS-mode or HS-mode. Read the sstatus of the
+    // mode that will handle the trap based on the delegation control
+    reg_t s = (((vsdeleg >> bit) & 1)) ? state.sstatus->read() :
+                                         state.nonvirtual_sstatus->read();
     supv_double_trap = get_field(s, MSTATUS_SDT);
     if (supv_double_trap)
       vsdeleg = hsdeleg = 0;
@@ -711,18 +679,17 @@ void processor_t::build_opcode_map()
 }
 
 void processor_t::register_extension(extension_t *x) {
-  for (auto insn : x->get_instructions())
+  for (auto insn : x->get_instructions(*this))
     register_custom_insn(insn);
   build_opcode_map();
 
-  for (auto disasm_insn : x->get_disasms())
+  for (auto disasm_insn : x->get_disasms(this))
     disassembler->add_insn(disasm_insn);
 
   if (!custom_extensions.insert(std::make_pair(x->name(), x)).second) {
     fprintf(stderr, "extensions must have unique names (got two named \"%s\"!)\n", x->name());
     abort();
   }
-  x->set_processor(this);
 }
 
 void processor_t::register_base_instructions()
@@ -747,23 +714,30 @@ void processor_t::register_base_instructions()
   #include "insn_list.h"
   #undef DEFINE_INSN
 
+  #define DEFINE_INSN_UNCOND(name) { \
+    insn_desc_t insn = { \
+      name##_match, \
+      name##_mask, \
+      fast_rv32i_##name, \
+      fast_rv64i_##name, \
+      fast_rv32e_##name, \
+      fast_rv64e_##name, \
+      logged_rv32i_##name, \
+      logged_rv64i_##name, \
+      logged_rv32e_##name, \
+      logged_rv64e_##name,                    \
+      g4trace_get_decoder(#name) \
+    }; \
+    register_base_insn(insn); \
+  }
+
   // add overlapping instructions first, in order
   #define DECLARE_OVERLAP_INSN(name, ext) \
     name##_overlapping = true; \
     if (isa.extension_enabled(ext)) \
-      register_base_insn((insn_desc_t) { \
-        name##_match, \
-        name##_mask, \
-        fast_rv32i_##name, \
-        fast_rv64i_##name, \
-        fast_rv32e_##name, \
-        fast_rv64e_##name, \
-        logged_rv32i_##name, \
-        logged_rv64i_##name, \
-        logged_rv32e_##name, \
-        logged_rv64e_##name, \
-        g4trace_get_decoder(#name)});
-  #include "overlap_list.h"
+      DEFINE_INSN_UNCOND(name);
+
+#include "overlap_list.h"
   #undef DECLARE_OVERLAP_INSN
 
   // add all other instructions.  since they are non-overlapping, the order
@@ -771,20 +745,11 @@ void processor_t::register_base_instructions()
   // appear earlier to improve search time on opcode_cache misses.
   #define DEFINE_INSN(name) \
     if (!name##_overlapping) \
-      register_base_insn((insn_desc_t) { \
-        name##_match, \
-        name##_mask, \
-        fast_rv32i_##name, \
-        fast_rv64i_##name, \
-        fast_rv32e_##name, \
-        fast_rv64e_##name, \
-        logged_rv32i_##name, \
-        logged_rv64i_##name, \
-        logged_rv32e_##name, \
-        logged_rv64e_##name, \
-        g4trace_get_decoder(#name)});
+      DEFINE_INSN_UNCOND(name);
+
   #include "insn_list.h"
   #undef DEFINE_INSN
+  #undef DEFINE_INSN_UNCOND
 
   // terminate instruction list with a catch-all
   register_base_insn(insn_desc_t::illegal_instruction);
@@ -821,6 +786,11 @@ bool processor_t::store(reg_t addr, size_t len, const uint8_t* bytes)
   }
 
   return false;
+}
+
+reg_t processor_t::size()
+{
+  return PGSIZE;
 }
 
 void processor_t::trigger_updated(const std::vector<triggers::trigger_t *> &triggers)

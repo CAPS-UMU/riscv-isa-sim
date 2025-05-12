@@ -113,6 +113,7 @@ struct state_t
   csr_t_p stvec;
   virtualized_csr_t_p satp;
   csr_t_p scause;
+  csr_t_p scountinhibit;
 
   // When taking a trap into HS-mode, we must access the nonvirtualized HS-mode CSRs directly:
   csr_t_p nonvirtual_stvec;
@@ -364,8 +365,9 @@ public:
   void register_extension(extension_t*);
 
   // MMIO slave interface
-  bool load(reg_t addr, size_t len, uint8_t* bytes);
-  bool store(reg_t addr, size_t len, const uint8_t* bytes);
+  bool load(reg_t addr, size_t len, uint8_t* bytes) override;
+  bool store(reg_t addr, size_t len, const uint8_t* bytes) override;
+  reg_t size() override;
 
   // When true, display disassembly of each instruction that's executed.
   bool debug;
