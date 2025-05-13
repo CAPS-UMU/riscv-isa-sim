@@ -435,7 +435,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   bool ignore_csrs = true;
   bool ignore_vstatus = true;
 
-  auto diffpc = pc - g4ts.lastpc;
+  int64_t diffpc = pc - g4ts.lastpc;
   const char* prefix;
   
   if (g4i.type == G4InstType::GENERIC) {
