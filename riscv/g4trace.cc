@@ -409,16 +409,12 @@ static void g4trace_print_memory_access_addresses(const commit_log_mem_t& access
 
 void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder decoder) {
   if (!p->get_log_active()) return;
+  if (p->get_state()->last_inst_priv && p->get_log_filter_privileged()) return;
 
   auto& read_regs = p->get_state()->log_reg_read;
   auto& written_regs = p->get_state()->log_reg_write;
   auto& loads = p->get_state()->log_mem_read;
   auto& stores = p->get_state()->log_mem_write;
-  int priv = p->get_state()->last_inst_priv;
-  int xlen = p->get_state()->last_inst_xlen;
-  int flen = p->get_state()->last_inst_flen;
-
-  if (priv && p->get_log_filter_privileged()) return;
 
   auto& g4ts = p->get_log_g4_trace_state();
   auto out = g4ts.out;
