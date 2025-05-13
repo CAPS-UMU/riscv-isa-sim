@@ -3,6 +3,7 @@
 #include "disasm.h"
 #include "compress/lzmastream.h"
 #include "compress/zstdstream.h"
+#include <cstdint>
 #include <filesystem>
 
 using namespace std;
@@ -586,7 +587,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
 
   if (g4i.target_address != g4trace_invalid_target_address) {
     assert(g4i.type == G4InstType::B || g4i.type == G4InstType::C || g4i.type == G4InstType::c || g4i.type == G4InstType::J || g4i.type == G4InstType::j || g4i.type == G4InstType::r);
-    *out << "t" << (g4i.target_address - pc);
+    *out << "t" << (static_cast<int64_t>(g4i.target_address - pc));
     if (g4i.type == G4InstType::B) {
       if (g4ts.setpc_done) {
         *out << "*";
