@@ -169,6 +169,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "fld", "flw", "flq", "flw",
                     "vle8_v", "vle16_v", "vle32_v", "vle64_v", "vle8ff_v", "vle16ff_v", "vle32ff_v", "vle64ff_v"
                     "vluxei8_v", "vluxei16_v", "vluxei32_v", "vluxei64_v",
+                    "vlse8_v", "vlse16_v", "vlse32_v", "vlse64_v",
                     "vlm_v")) {
     return [](DECODER_ARGS) {
       G4InstInfo ret { G4InstType::L };
@@ -388,6 +389,11 @@ static void g4trace_print_memory_access_addresses(const commit_log_mem_t& access
     *out << " " << hex << addr_first << " " << dec << size;
   } else if (g4i.memory_access_type ==  G4VectorMemAccessType::CONTIGUOUS) {
     *out << "s" << size << "e" << num_items << " " << hex << addr_first << " " << dec;
+  } else if (g4i.memory_access_type ==  G4VectorMemAccessType::STRIDED) {
+    int stride = num_items > 1
+      ? get<0>(accesses[1]) - get<0>(accesses[0])
+      : 0;
+    *out << "s" << size << "e" << num_items << " " << hex << addr_first  << dec << "+" << stride << " ";
   } else if (g4i.memory_access_type ==  G4VectorMemAccessType::INDEXED) {
     *out << "s" << size << "e" << num_items;
     for (auto i = accesses.cbegin(); i != accesses.cend(); i++) {
@@ -401,7 +407,7 @@ static void g4trace_print_memory_access_addresses(const commit_log_mem_t& access
     *out << " TODO access_tcype=" << (int) g4i.memory_access_type << " ";
     for (auto item : accesses) {
       auto addr = get<0>(item);
-      auto size = get<2>(item);
+      int size = get<2>(item);
       *out << " " << hex << addr << dec << " " << size;
     }
   }
