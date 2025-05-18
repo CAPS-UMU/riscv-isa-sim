@@ -170,7 +170,9 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vle8_v", "vle16_v", "vle32_v", "vle64_v", "vle8ff_v", "vle16ff_v", "vle32ff_v", "vle64ff_v"
                     "vluxei8_v", "vluxei16_v", "vluxei32_v", "vluxei64_v",
                     "vlse8_v", "vlse16_v", "vlse32_v", "vlse64_v",
-                    "vlm_v")) {
+                    "vlm_v",
+                    "vl1re16_v", "vl1re32_v", "vl1re64_v", "vl1re8_v", "vl2re16_v", "vl2re32_v", "vl2re64_v", "vl2re8_v", 
+                    "vl4re16_v", "vl4re32_v", "vl4re64_v", "vl4re8_v", "vl8re16_v", "vl8re32_v", "vl8re64_v", "vl8re8_v")) {
     return [](DECODER_ARGS) {
       G4InstInfo ret { G4InstType::L };
       ret.memory_access_type = g4trace_decode_mem_access_type(insn);
