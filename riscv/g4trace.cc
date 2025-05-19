@@ -215,8 +215,8 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "sb", "sd", "sh", "sw",
                     "vse8_v", "vse16_v", "vse32_v", "vse64_v",
                     "vsuxei8_v", "vsuxei16_v", "vsuxei32_v", "vsuxei64_v",
-                    "vsm_v"
-               )) {
+                    "vsm_v",
+                    "vs1r_v" /* TODO: , "vs2r_v","vs4r_v", "vs8r_v" */)) {
     return [](DECODER_ARGS) {
       G4InstInfo ret { G4InstType::S };
       ret.S_base_reg = g4trace_regid_x(insn.rs1());
@@ -224,7 +224,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
       if (ret.memory_access_type == G4VectorMemAccessType::SCALAR) {
         ret.S_data_reg = g4trace_regid_x(insn.rs2());
       } else {
-        ret.S_data_reg = g4trace_regid_v(insn.rd());
+        ret.S_data_reg = g4trace_regid_v(insn.rd());  // TODO: this is not correct for Vector Store Whole Register instructions that write more than one register (vs2r_v vs4r_v vs8r_v) and Vector Store Segment Instructions 
       }
       return ret;
     };
@@ -354,7 +354,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vfsgnjn_vv", "vfsgnjx_vf", "vfsgnjx_vv",
                     "vrgather_vi", "vrgather_vv", "vrgather_vx", "vrgatherei16_vv",
                     "vfslide1down_vf", "vfslide1up_vf", "vcompress_vm",
-                      "vnsra_wi", "vnsra_wv", "vnsra_wx", "vnsrl_wi", "vnsrl_wv", "vnsrl_wx")) {
+                    "vnsra_wi", "vnsra_wv", "vnsra_wx", "vnsrl_wi", "vnsrl_wv", "vnsrl_wx")) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::GENERIC }; };
   } else if (eq_any(instr_name,
                     "vfmacc_vf", "vfmacc_vv", "vfmadd_vf", "vfmadd_vv", "vfnmacc_vf", "vfnmacc_vv",
