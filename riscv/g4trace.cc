@@ -463,7 +463,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     prefix = "LA";
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
   } else if (g4i.type == G4InstType::LR) {
-    prefix = "LR";
+    prefix = "LA"; // TODO: should be SC, but gems4proc does not yet support it
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
   } else if (g4i.type == G4InstType::S) {
     prefix = "S";
@@ -476,7 +476,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     assert(g4i.S_data_reg != g4trace_regid_invalid);
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
   } else if (g4i.type == G4InstType::SC) {
-    prefix = "SC";
+    prefix = "SA"; // TODO: should be SC, but gems4proc does not yet support it
     assert(g4i.S_base_reg != g4trace_regid_invalid);
     assert(g4i.S_data_reg != g4trace_regid_invalid);
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
