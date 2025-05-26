@@ -177,13 +177,13 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
 
   reg_t npc;
 
-  if (fetch.insn.bits() == 0x40205013 /* srai zero, zero, 2 */) {
+  if (fetch.insn.bits() == 0x10103013 /* sltiu zero,zero,G4_TRACE_ANNOTATION_ID_START_TRACING */) {
     // Start tracing
     p->set_log_active(true);
-  } else if (fetch.insn.bits() == 0x40005013 /* srai zero, zero, 0 */) {
+  } else if (fetch.insn.bits() == 0x10203013 /* sltiu zero,zero,G4_TRACE_ANNOTATION_ID_START_REGION_OF_INTEREST */) {
     // Begin ROI
     p->set_log_active(true); // should be true already because Start tracing should have appeared before
-  } // Note that End ROI is handled later to ensure that the End_ROI instruction is logged
+  } // Note that End ROI is handled later to ensure that the End_ROI instruction is logged
   
   try {
     npc = fetch.func(p, fetch.insn, pc);
@@ -225,7 +225,7 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
   }
   p->update_histogram(pc);
 
-  if (fetch.insn.bits() == 0x40105013 /* srai zero, zero, 1 */
+  if (fetch.insn.bits() == 0x10303013 /* sltiu zero,zero,G4_TRACE_ANNOTATION_ID_END_REGION_OF_INTEREST */
       || p->get_state()->g4trace.instructions_traced >= p->get_log_g4trace_max_instructions()) {
     // End ROI
     p->set_log_active(false);

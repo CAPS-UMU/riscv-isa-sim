@@ -1,11 +1,11 @@
 .global _start
 
 _start: 
-        srai    zero, zero, 2 # start tracing
+        sltiu   zero,zero, 0x101 # start tracing
 
         addi    x3, x4, 43
 
-        srai    zero, zero, 0 # start ROI
+        sltiu   zero, zero, 0x102 # start ROI
         
         addi    x5, x6, 44
 
@@ -19,7 +19,7 @@ t:      jal     y
         la      t5, z
         jr      t5
         
-z:      srai    zero, zero, 1 # end ROI
+z:      sltiu   zero, zero, 0x103 # end ROI
 
         # exit(0)
         li      a0, 0

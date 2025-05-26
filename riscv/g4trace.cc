@@ -72,21 +72,45 @@ static G4VectorMemAccessType g4trace_decode_mem_access_type(insn_t insn) {
 
 static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { // g4trace_get_decoder does some (optional) logging before this.
 #define DECODER_ARGS processor_t *p, reg_t pc, insn_t insn
-  if (instr_name == "srai") {
-    return [](DECODER_ARGS) { 
-      if (insn.bits() == 0x40205013 /* srai zero, zero, 2 */) {
-        return G4InstInfo { G4InstType::START_TRACING }; ;
-      } else if (insn.bits() == 0x40005013 /* srai zero, zero, 0 */) {
-        return G4InstInfo { G4InstType::CLEAR };   // ROI start
-        } else if (insn.bits() == 0x40105013 /* srai zero, zero, 1 */) {
-        return G4InstInfo { G4InstType::END_ROI };   // ROI end
+  if (instr_name == "sltiu") {
+    return [](DECODER_ARGS) {
+      if (insn.rd() == 0 && insn.rs1() == 0) {
+        if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_START_TRACING) {
+          return G4InstInfo { G4InstType::START_TRACING }; ;
+        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_START_REGION_OF_INTEREST) {
+          return G4InstInfo { G4InstType::CLEAR };   // ROI start
+        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_END_REGION_OF_INTEREST) {
+          return G4InstInfo { G4InstType::END_ROI };   // ROI end
+        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_BEGIN_SM_LOCK_ACQUIRE) {
+          return G4InstInfo { .type = G4InstType::ACQ, .lock_address = p->get_state()->XPR[10] /*a0*/ };
+        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_BEGIN_SM_LOCK_RELEASE) {
+          return G4InstInfo { .type = G4InstType::REL, .lock_address = p->get_state()->XPR[10] /*a0*/ };
+        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_BEGIN_SM_BARRIER) {
+          return G4InstInfo { .type = G4InstType::BAR, .lock_address = p->get_state()->XPR[10] /*a0*/ };
+        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_BEGIN_SM_CONDITION_SIGNAL) {
+          return G4InstInfo { .type = G4InstType::CV_SIGNAL, .cond_address = p->get_state()->XPR[10] /*a0*/ };
+        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_BEGIN_SM_CONDITION_BROADCAST) {
+          return G4InstInfo { .type = G4InstType::CV_BCAST, .cond_address = p->get_state()->XPR[10] /*a0*/ };
+        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_BEGIN_SM_CONDITION_WAIT) {
+          return G4InstInfo { .type = G4InstType::CV_WAIT, .cond_address = p->get_state()->XPR[10] /*a0*/, .lock_address = p->get_state()->XPR[11] /*a1*/  };
+        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_BEGIN_SM_ATOMIC_ACQUIRE) {
+          assert(false); // TODO
+        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_BEGIN_SM_ATOMIC_RELEASE) {
+          assert(false); // TODO
+        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_BEGIN_SM_ACQUIRE_RELEASE) {
+          assert(false); // TODO
+        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_END_SM) {
+          return G4InstInfo { G4InstType::END_SM };
+        } else {
+          assert(false);
+        }
       } else {
         return G4InstInfo { G4InstType::GENERIC }; 
       }
     };
   } else if (eq_any(instr_name,
                     "add", "addi", "addiw", "addw", "add_uw", "and", "andn", "andi", "auipc", "lui", "or", "ori", "sll", "slli",
-                    "slliw", "sllw", "slt", "slti", "sltiu", "sltu", "sra", "sraiw", "sraw", "srl",
+                    "slliw", "sllw", "slt", "slti", /*"sltiu",*/ "sltu", "sra", "srai", "sraiw", "sraw", "srl",
                     "srli", "srliw", "srlw", "sub", "subw", "xor", "xori",
                     "c_add", "c_addi", "c_addi4spn", "c_addw", "c_and", "c_andi",
                     "c_li", "c_lui", "c_mv", "c_or", "c_slli", "c_srai", "c_srli", "c_sub", "c_subw", "c_xor")) {
@@ -417,25 +441,31 @@ static void g4trace_print_memory_access_addresses(const commit_log_mem_t& access
 
 void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder decoder) {
   if (!p->get_log_active()) return;
-  if (p->get_state()->last_inst_priv && p->get_log_filter_privileged()) return;
+
+  auto& g4ts = p->get_log_g4_trace_state();
+  auto out = g4ts.out;
+  
+  if (p->get_log_g4_trace_config()->verbose) {
+    *out << "{ " << hex << setw(8) << right << p->get_state()->XPR[4] << " " << pc << /*" " << insn.bits() <<*/ dec << " " << left << setw(32) << p->get_disassembler()->disassemble(insn) << " } ";
+    out->flush(); // TODO remove this, now here to ensure output is complete in case of assert.
+  }
+
+  if (p->get_state()->last_inst_priv && p->get_log_filter_privileged()) {
+    if (p->get_log_g4_trace_config()->verbose) {
+      *out << "{ PRIV }\n";
+    }
+    return;
+  }
 
   auto& read_regs = p->get_state()->log_reg_read;
   auto& written_regs = p->get_state()->log_reg_write;
   auto& loads = p->get_state()->log_mem_read;
   auto& stores = p->get_state()->log_mem_write;
 
-  auto& g4ts = p->get_log_g4_trace_state();
-  auto out = g4ts.out;
-  
-  if (g4ts.instructions_traced >= p->get_log_g4trace_max_instructions()) {
+    if (g4ts.instructions_traced >= p->get_log_g4trace_max_instructions()) {
     *out << "END " << hex << g4ts.lastpc << dec << endl;
     // TODO maybe out->close();
     return; // don't print operands, don't update lastpc
-  }
-
-  if (p->get_log_g4_trace_config()->verbose) {
-    *out << "{ " << left << setw(32) << p->get_disassembler()->disassemble(insn) << " } ";
-    out->flush(); // TODO remove this, now here to ensure output is complete in case of assert.
   }
 
   G4InstInfo g4i = decoder(p, pc, insn);
@@ -522,11 +552,61 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     *out << "END " << hex << g4ts.lastpc << dec << endl;
     // TODO maybe out->close();
     return; // don't print operands, don't update lastpc
+  } else if (g4i.type == G4InstType::ACQ) {
+    *out << "ACQ " << hex << g4i.lock_address << " " << dec << g4ts.thread_id << "\n";
+    //assert(g4ts.sync_marker_level == 0); // nesting not allowed for now
+    g4ts.sync_marker_level = g4ts.sync_marker_level + 1;
+    return; // don't print operands, don't update lastpc
+  } else if (g4i.type == G4InstType::REL) {
+    *out << "REL " << hex << g4i.lock_address << " " << dec << g4ts.thread_id << "\n";
+    assert(g4ts.sync_marker_level == 0);
+    g4ts.sync_marker_level = g4ts.sync_marker_level + 1;
+    return; // don't print operands, don't update lastpc
+  } else if (g4i.type == G4InstType::BAR) {
+    // layout of barrier based on splash4x (struct { pthread_mutex_t bar_mutex; pthread_cond_t bar_cond; unsigned bar_teller; } )
+    auto mutex_addr = g4i.lock_address;
+    auto cond_addr = mutex_addr + sizeof(pthread_mutex_t);
+    auto counter_addr = cond_addr + sizeof(pthread_cond_t);
+    *out << "BAR " << hex << cond_addr << " " << counter_addr << " " << mutex_addr << " " << dec << g4ts.thread_id << "\n";
+    assert(g4ts.sync_marker_level == 0);
+    g4ts.sync_marker_level = g4ts.sync_marker_level + 1;
+    return; // don't print operands, don't update lastpc
+  } else if (g4i.type == G4InstType::CV_SIGNAL) {
+    *out << "CV_SIGNAL " << hex << g4i.cond_address << " " << dec << g4ts.thread_id << "\n";
+    assert(g4ts.sync_marker_level == 0);
+    g4ts.sync_marker_level = g4ts.sync_marker_level + 1;
+    return; // don't print operands, don't update lastpc
+  } else if (g4i.type == G4InstType::CV_BCAST) {
+    *out << "CV_BCAST " << hex << g4i.cond_address << " " << dec << g4ts.thread_id << "\n";
+    assert(g4ts.sync_marker_level == 0);
+    g4ts.sync_marker_level = g4ts.sync_marker_level + 1;
+    return; // don't print operands, don't update lastpc
+  } else if (g4i.type == G4InstType::CV_WAIT) {
+    *out << "CV_WAIT " << hex << g4i.cond_address << " " << g4i.lock_address << " " << dec << g4ts.thread_id << "\n";
+    assert(g4ts.sync_marker_level == 0);
+    g4ts.sync_marker_level = g4ts.sync_marker_level + 1;
+    return; // don't print operands, don't update lastpc
+  } else if (g4i.type == G4InstType::END_SM) {
+    assert(g4ts.sync_marker_level > 0);
+    g4ts.sync_marker_level = g4ts.sync_marker_level - 1;
+    if (p->get_log_g4_trace_config()->verbose) {
+      *out << "{ END_SM }\n";
+    }
+    assert(g4ts.sync_marker_level == 0); // nesting not allowed for now
+    return; // don't print operands, don't update lastpc
   } else {
     prefix = "UNKNOWN";
     assert(g4i.type == G4InstType::UNKNOWN);
   }
 
+  if (g4ts.sync_marker_level > 0) {
+    // don't print anything, don't update lastpc
+    if (p->get_log_g4_trace_config()->verbose) {
+      *out << "{ SM " << g4ts.sync_marker_level << " }\n";
+    }
+    return;
+  }
+  
   *out << prefix << diffpc;
 
   assert(p->get_log_g4_trace_config()->verbose || g4i.type != G4InstType::UNKNOWN);
@@ -648,11 +728,14 @@ bool g4trace_parse_compression_config(const string& opts, string& method, int& p
 void g4trace_open_trace_file(G4TracePerProcState& s) {
   assert(s.global->enable);
   assert(s.out == nullptr);
+  assert(s.thread_id == -1);
   if (!filesystem::exists(s.global->dest)) {
     filesystem::create_directory(s.global->dest);
   }
+  s.thread_id = s.global->num_traces;
+  ++s.global->num_traces;
   stringstream name;
-  name << "trace-" << setw(4) << setfill('0') << s.global->num_traces << ".trc";
+  name << "trace-" << setw(4) << setfill('0') << s.thread_id << ".trc";
   filesystem::path p = filesystem::path(s.global->dest) / name.str();
   string comp;
   int preset;
@@ -665,7 +748,6 @@ void g4trace_open_trace_file(G4TracePerProcState& s) {
   } else if (comp == "lzma") {
     s.out = new LzmaOStream(p, preset);
   }
-  ++s.global->num_traces;
 }
 
 void g4trace_close_trace_file(G4TracePerProcState& s) {

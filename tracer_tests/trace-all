@@ -35,6 +35,11 @@ versions=(gcc.riscv64gc gcc.riscv64gcv)
 procs=1
 trace-all
 
+benchmarks=(test07 test08 test09)
+versions=(gcc.riscv64gc gcc.riscv64gcv)
+procs=4
+trace-all
+
 benchmarks=(a01-far-atomic-friendly a02-near-atomic-friendly)
 versions=(gcc.riscv64gcv)
 procs=4

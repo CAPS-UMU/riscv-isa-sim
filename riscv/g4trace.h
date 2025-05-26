@@ -18,12 +18,14 @@ struct G4TraceConfig {
 
 struct G4TracePerProcState {
   G4TraceConfig *global = nullptr;
-  bool has_started = false; // The first instruction address ha been printed (to avoid doing it twice if the START_TRACING hint has appeared already)
+  int thread_id = -1; // initialized when the trace file is opened.
+  bool has_started = false; // The first instruction address has been printed (to avoid doing it twice if the START_TRACING hint has appeared already)
   std::ostream *out = nullptr;
   reg_t lastpc = 0;
   bool setpc_done = false;
   reg_t last_setpc = 0;
   uint64_t instructions_traced = 0;
+  int sync_marker_level = 0; // currently expected to be 0 or 1 
 };
 
 struct G4TraceRegId {
@@ -45,8 +47,9 @@ enum class G4InstType {
   END_ROI,
   ACQ, REL,
   BAR,
-  CV_SIGNAL, CV_SIGNALCV_BCAST,
+  CV_SIGNAL, CV_BCAST,
   CV_WAIT,
+  END_SM // not really a valid gems4proc instruction
 };
 
 enum class G4VectorMemAccessType {
@@ -66,6 +69,8 @@ struct G4InstInfo {
   G4TraceRegId S_data_reg = g4trace_regid_invalid;  // for types S, SA, RMW (not neccesary for loads) TODO: remove this
   G4VectorMemAccessType memory_access_type = G4VectorMemAccessType::INVALID; // for memory accesses (L, LA, LE, S, SA, RMW)
   reg_t target_address = g4trace_invalid_target_address; // for B, C, c, J, j, r
+  reg_t cond_address = g4trace_invalid_target_address; // for CV_WAIT, CV_SIGNAL, CV_SIGNALCV_BCAST
+  reg_t lock_address = g4trace_invalid_target_address; // for ACQ, REL, BAR (barrier address instead of lock), CV_WAIT
 };
 
 class processor_t;
@@ -77,5 +82,26 @@ void g4trace_open_trace_file(G4TracePerProcState& s);
 void g4trace_close_trace_file(G4TracePerProcState& s);
 void g4trace_write_index(G4TraceConfig *global);
 bool g4trace_parse_compression_config(const std::string& opts, std::string& method, int& preset);
+
+// From g4tracer-interface.h
+enum G4TraceAnnotationId {
+    G4_TRACE_ANNOTATION_ID_START_TRACING = 0x101,
+    G4_TRACE_ANNOTATION_ID_START_REGION_OF_INTEREST = 0x102,
+    G4_TRACE_ANNOTATION_ID_END_REGION_OF_INTEREST = 0x103,
+
+    // Synchronization markers
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_LOCK_ACQUIRE = 0x110,
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_LOCK_RELEASE = 0x111,
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_BARRIER = 0x112,
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_CONDITION_SIGNAL = 0x113,
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_CONDITION_BROADCAST = 0x114,
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_CONDITION_WAIT = 0x115,
+
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_ATOMIC_ACQUIRE = 0x116,
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_ATOMIC_RELEASE = 0x117,
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_ACQUIRE_RELEASE = 0x118,
+
+    G4_TRACE_ANNOTATION_ID_END_SM = 0x1FF,
+};
 
 #endif

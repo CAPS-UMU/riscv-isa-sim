@@ -6,6 +6,9 @@
 #define _GNU_SOURCE
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
 #include <pthread.h>
 #include <sched.h>
 #include <stdatomic.h>
@@ -22,33 +25,21 @@
 #define thread_local __thread
 #endif
 
-#ifndef G4TRACER_VERBOSE
-// These will only work correctly if g4tracer_start_ROI and g4tracer_end_ROI are called from the same file
-#define G4TRACER_VERBOSE 1
-#endif
-#ifndef G4TRACER_VERBOSE_GETTIME
-#define G4TRACER_VERBOSE_GETTIME 1
-#endif
-#ifndef G4TRACER_VERBOSE_RDTIME
-#define G4TRACER_VERBOSE_RDTIME 0
-#endif
-#ifndef G4TRACER_VERBOSE_RDCYCLE
-#define G4TRACER_VERBOSE_RDCYCLE 0 // Using RDCYLE and RDINSTRET from userspace is deprecated and requires enabling kernel support
-#endif
+enum G4TraceAnnotationId {
+    G4_TRACE_ANNOTATION_ID_START_TRACING = 0x101,
+    G4_TRACE_ANNOTATION_ID_START_REGION_OF_INTEREST = 0x102,
+    G4_TRACE_ANNOTATION_ID_END_REGION_OF_INTEREST = 0x103,
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
+    // Synchronization markers
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_MUTEX_ACQUIRE = 0x110,
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_MUTEX_RELEASE = 0x111,
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_BARRIER = 0x112,
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_CONDITION_SIGNAL = 0x113,
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_CONDITION_BROADCAST = 0x114,
+    G4_TRACE_ANNOTATION_ID_BEGIN_SM_CONDITION_WAIT = 0x115,
 
-#if G4TRACER_VERBOSE_RDTIME
-static thread_local uint64_t _g4tracer_roi_start_rdtime;
-#endif
-#if G4TRACER_VERBOSE_GETTIME
-static thread_local uint64_t _g4tracer_roi_start_gettime;
-#endif
-#if G4TRACER_VERBOSE_RDCYCLE
-static thread_local uint64_t _g4tracer_roi_start_cycle;
-static thread_local uint64_t _g4tracer_roi_start_instret;
-#endif
+    G4_TRACE_ANNOTATION_ID_END_SM = 0x1FF,
+};
 
 #define G4TRACER_INTERFACE_FUNC static inline __attribute__((always_inline))
 
@@ -64,7 +55,9 @@ static atomic_int _g4tracer_thread_id = 0;
 G4TRACER_INTERFACE_FUNC void g4tracer_init_thread(pthread_t thread) {
   int np = get_nprocs();
   int id = _g4tracer_thread_id++;
-  bind_thread_to_processor(thread, ((np - id) % np + np) % np); // bind threads from last available processor to first, so that processor will be free as long as thare are more processors that threads.
+  // bind threads from last available processor to first, so that processor 0 will be free as long as thare are more processors that threads.
+  int proc = np - 1 - (id % np);
+  bind_thread_to_processor(thread, proc);
 }
 
 G4TRACER_INTERFACE_FUNC void g4tracer_init_current_thread() {
@@ -72,55 +65,53 @@ G4TRACER_INTERFACE_FUNC void g4tracer_init_current_thread() {
   g4tracer_init_thread(current_thread);
 }
 
-#ifdef __cpp
-#include <cstdio>
-#include <ctime>
-#include <cassert>
-#else
-#include <stdio.h>
-#include <time.h>
-#include <assert.h>
-#endif
-
-#if G4TRACER_VERBOSE_GETTIME
-G4TRACER_INTERFACE_FUNC uint64_t get_time_ns() {
-  struct timespec  ts;
-  /*int err = */clock_gettime(CLOCK_MONOTONIC, &ts);
-  /*assert(!err);*/
-  return ts.tv_sec * 1000000000 + ts.tv_nsec;
-}
-#endif
 
 #if defined __riscv
+#define G4_TRACE_HINT_ASM(hint_id)                      \
+  __asm__ volatile("sltiu zero, zero, %[id]"            \
+                   : : [id]"i"(hint_id) : "memory");
+
+#define G4_TRACE_HINT_ASM_1(hint_id, arg_a0)                    \
+  register void *__a0 asm ("a0") = arg_a0;                      \
+  __asm__ volatile("sltiu zero, zero, %[id]"                    \
+                   : : [id]"i"(hint_id), "r"(__a0) : "memory");
+
+#define G4_TRACE_HINT_ASM_2(hint_id, arg_a0, arg_a1)                    \
+  register void *__a0 asm ("a0") = arg_a0;                              \
+  register void *__a1 asm ("a1") = arg_a1;                              \
+  __asm__ volatile("sltiu zero, zero, %[id]"                            \
+                   : : [id]"i"(hint_id), "r"(__a0), "r"(__a1)  : "memory");
+
+G4TRACER_INTERFACE_FUNC void g4tracer_start_tracing() { G4_TRACE_HINT_ASM(G4_TRACE_ANNOTATION_ID_START_TRACING); }
+G4TRACER_INTERFACE_FUNC void g4tracer_start_ROI() { G4_TRACE_HINT_ASM(G4_TRACE_ANNOTATION_ID_START_REGION_OF_INTEREST); }
+G4TRACER_INTERFACE_FUNC void g4tracer_end_ROI() { G4_TRACE_HINT_ASM(G4_TRACE_ANNOTATION_ID_END_REGION_OF_INTEREST); }
+G4TRACER_INTERFACE_FUNC void g4tracer_begin_sm_mutex_lock(void *mutex) { G4_TRACE_HINT_ASM_1(G4_TRACE_ANNOTATION_ID_BEGIN_SM_MUTEX_ACQUIRE, mutex); }
+G4TRACER_INTERFACE_FUNC void g4tracer_begin_sm_mutex_unlock(void *mutex) { G4_TRACE_HINT_ASM_1(G4_TRACE_ANNOTATION_ID_BEGIN_SM_MUTEX_RELEASE, mutex); }
+G4TRACER_INTERFACE_FUNC void g4tracer_begin_sm_barrier(void *barrier) { G4_TRACE_HINT_ASM_1(G4_TRACE_ANNOTATION_ID_BEGIN_SM_BARRIER, barrier); }
+G4TRACER_INTERFACE_FUNC void g4tracer_begin_sm_condition_signal(void *cond) { G4_TRACE_HINT_ASM_1(G4_TRACE_ANNOTATION_ID_BEGIN_SM_CONDITION_SIGNAL, cond); }
+G4TRACER_INTERFACE_FUNC void g4tracer_begin_sm_condition_broadcast(void *cond) { G4_TRACE_HINT_ASM_1(G4_TRACE_ANNOTATION_ID_BEGIN_SM_CONDITION_BROADCAST, cond); }
+G4TRACER_INTERFACE_FUNC void g4tracer_begin_sm_condition_wait(void *cond, void *mutex) { G4_TRACE_HINT_ASM_2(G4_TRACE_ANNOTATION_ID_BEGIN_SM_CONDITION_WAIT, cond, mutex); }
+G4TRACER_INTERFACE_FUNC void g4tracer_end_sm() { G4_TRACE_HINT_ASM(G4_TRACE_ANNOTATION_ID_END_SM); }
+
+
 G4TRACER_INTERFACE_FUNC uint64_t g4tracer_rdtime() {
   unsigned long cycles;
-  asm volatile("rdtime %0" : "=r"(cycles) :: "memory");
+  __asm__ volatile("rdtime %0" : "=r"(cycles) :: "memory");
   return cycles;
 }
 
 G4TRACER_INTERFACE_FUNC uint64_t g4tracer_rdcycle() {
   unsigned long cycles;
-  asm volatile("rdcycle %0" : "=r"(cycles) :: "memory");
+  __asm__ volatile("rdcycle %0" : "=r"(cycles) :: "memory");
   return cycles;
 }
 
 G4TRACER_INTERFACE_FUNC uint64_t g4tracer_rdinstret() {
   unsigned long instr;
-  asm volatile("rdinstret %0" : "=r"(instr) :: "memory");
+  __asm__ volatile("rdinstret %0" : "=r"(instr) :: "memory");
   return instr;
 }
 
-G4TRACER_INTERFACE_FUNC void g4tracer_start_tracing() {
-  asm volatile("srai zero, zero, 2" ::: "memory");
-}
-
-G4TRACER_INTERFACE_FUNC void g4tracer_start_ROI() {
-  __asm__ volatile("srai zero, zero, 0" ::: "memory");
-}
-
-G4TRACER_INTERFACE_FUNC void g4tracer_end_ROI() {
-  __asm__ volatile("srai zero, zero, 1" ::: "memory");
-}
 #elif defined __x86_64__
 #include <x86intrin.h>
 
@@ -147,6 +138,77 @@ G4TRACER_INTERFACE_FUNC void g4tracer_start_ROI() {
 
 G4TRACER_INTERFACE_FUNC void g4tracer_end_ROI() {
   // TODO
+}
+
+G4TRACER_INTERFACE_FUNC void g4tracer_begin_sm_mutex_lock(void *mutex) {
+  // TODO
+}
+
+G4TRACER_INTERFACE_FUNC void g4tracer_begin_sm_mutex_unlock(void *mutex) {
+  // TODO
+}
+
+G4TRACER_INTERFACE_FUNC void g4tracer_begin_sm_barrier(void *barrier) {
+  // TODO
+}
+
+G4TRACER_INTERFACE_FUNC void g4tracer_begin_sm_condition_signal(void *cond) {
+  // TODO
+}
+
+G4TRACER_INTERFACE_FUNC void g4tracer_begin_sm_condition_broadcast(void *cond) {
+  // TODO
+}
+
+G4TRACER_INTERFACE_FUNC void g4tracer_begin_sm_condition_wait(void *cond, void *mutex) {
+  // TODO
+}
+
+G4TRACER_INTERFACE_FUNC void g4tracer_end_sm() {
+  // TODO
+}
+#endif
+
+#ifndef G4TRACER_VERBOSE
+// These will only work correctly if g4tracer_start_ROI and g4tracer_end_ROI are called from the same file
+#define G4TRACER_VERBOSE 1
+#endif
+#ifndef G4TRACER_VERBOSE_GETTIME
+#define G4TRACER_VERBOSE_GETTIME 1
+#endif
+#ifndef G4TRACER_VERBOSE_RDTIME
+#define G4TRACER_VERBOSE_RDTIME 0
+#endif
+#ifndef G4TRACER_VERBOSE_RDCYCLE
+#define G4TRACER_VERBOSE_RDCYCLE 0 // Using RDCYLE and RDINSTRET from userspace is deprecated and requires enabling kernel support
+#endif
+
+#if G4TRACER_VERBOSE_RDTIME
+static thread_local uint64_t _g4tracer_roi_start_rdtime;
+#endif
+#if G4TRACER_VERBOSE_GETTIME
+static thread_local uint64_t _g4tracer_roi_start_gettime;
+#endif
+#if G4TRACER_VERBOSE_RDCYCLE
+static thread_local uint64_t _g4tracer_roi_start_cycle;
+static thread_local uint64_t _g4tracer_roi_start_instret;
+#endif
+#ifdef __cpp
+#include <cstdio>
+#include <ctime>
+#include <cassert>
+#else
+#include <stdio.h>
+#include <time.h>
+#include <assert.h>
+#endif
+
+#if G4TRACER_VERBOSE_GETTIME
+G4TRACER_INTERFACE_FUNC uint64_t get_time_ns() {
+  struct timespec  ts;
+  /*int err = */clock_gettime(CLOCK_MONOTONIC, &ts);
+  /*assert(!err);*/
+  return ts.tv_sec * 1000000000 + ts.tv_nsec;
 }
 #endif
 
@@ -190,6 +252,8 @@ G4TRACER_INTERFACE_FUNC void g4tracer_end_ROI_verbose() {
 #endif
 #endif
 }
+
+// TODO: move to another file
 
 struct g4tracer_thread_wrapper_data {
   void *(*start)(void *);

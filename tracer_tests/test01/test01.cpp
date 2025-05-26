@@ -14,9 +14,10 @@ int main() {
   }
 
   g4tracer_start_ROI_verbose();
-  for (int j = 0; j < 10; ++j)
-  for(int i = 0; i < n; i++) {
-    c[i] = c[i] * j + a[i] + b[i] * k;
+  for (int j = 0; j < 10; ++j) {
+    for(int i = 0; i < n; i++) {
+      c[i] = c[i] * j + a[i] + b[i] * k;
+    }
   }
   g4tracer_end_ROI_verbose();
 
