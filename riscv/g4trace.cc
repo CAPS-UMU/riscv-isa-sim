@@ -93,12 +93,6 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
           return G4InstInfo { .type = G4InstType::CV_BCAST, .cond_address = p->get_state()->XPR[10] /*a0*/ };
         } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_BEGIN_SM_CONDITION_WAIT) {
           return G4InstInfo { .type = G4InstType::CV_WAIT, .cond_address = p->get_state()->XPR[10] /*a0*/, .lock_address = p->get_state()->XPR[11] /*a1*/  };
-        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_BEGIN_SM_ATOMIC_ACQUIRE) {
-          assert(false); // TODO
-        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_BEGIN_SM_ATOMIC_RELEASE) {
-          assert(false); // TODO
-        } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_BEGIN_SM_ACQUIRE_RELEASE) {
-          assert(false); // TODO
         } else if (insn.i_imm() == G4_TRACE_ANNOTATION_ID_END_SM) {
           return G4InstInfo { G4InstType::END_SM };
         } else {
