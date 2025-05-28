@@ -3,6 +3,7 @@
 #include <iostream>
 #include <thread>
 #include <barrier>
+#include <unistd.h>
 #include <vector>
 
 using namespace std;
@@ -14,8 +15,15 @@ struct Item {
   char padding[padding_size];
 };
 
+mutex l;
+
 void adder_thread(barrier<>& barrier, int n_ops_thread, vector<Item>* items) {
   g4tracer_init_current_thread();
+
+  { lock_guard guard(l);
+    cout << "adder getpid " << getpid() << " gettid " << gettid() << endl;
+  }
+
   g4tracer_start_tracing();
 
   g4tracer_begin_sm_barrier(&barrier);
@@ -48,6 +56,8 @@ int main(int argc, char* argv[]) {
   int n_ops_thread = 100000;
   int n_locks = 1;
   int n_threads = 4;
+
+  fork(); // To test that threads from different processes don't get mixed up
   
   if (argc > 1) {
     n_threads = stoi(argv[1]);
@@ -69,7 +79,8 @@ int main(int argc, char* argv[]) {
     t.join();
   }
   for (auto& i: items) {
-    cout << i.i << endl;
+    cout << i.i << '\n';
   }
+  cout << "join getpid " << getpid() << " gettid " << gettid() << endl;
   return 0;
 }

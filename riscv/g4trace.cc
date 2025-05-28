@@ -433,6 +433,38 @@ static void g4trace_print_memory_access_addresses(const commit_log_mem_t& access
   }
 }
 
+static G4ThreadIdentifier g4trace_get_thread_identifier(processor_t *p) {
+  /* TODO: Use thread group id. It is harder because it requires reading from guest virtual memory (generates page faults)
+     auto sscratch = p->get_csr(CSR_SSCRATCH); // kernel scratch pointer if in user space
+     const reg_t THREAD_SIZE = 4096 << 2;// linux include/asm/thread_info.h
+     auto kernel_base_sp = sscratch & ~(THREAD_SIZE - 1);
+     auto thread_info = p->get_mmu()->load<reg_t>(kernel_base_sp, xlate_flags_t{.forced_virt = true}, true);
+  */
+  reg_t satp = p->get_state()->satp->readvirt(false);// & ((1LL << 44) - 1); // mode:4,asid:16,ppn:44, mask out mode and asid 
+  reg_t tp = p->get_state()->XPR[4];
+  return {satp, tp};
+};
+
+G4TracePerProcState& g4trace_get_thread_state(processor_t *p) {
+  auto ti = g4trace_get_thread_identifier(p);
+  static G4ThreadIdentifier cached_ti{0x3,0x3}; // to avoid accesing the hash table every time
+  static G4TracePerProcState* cached = nullptr;
+  if (cached_ti == ti) {
+    return *cached;
+  }
+  auto g4global = p->get_log_g4_trace_config();
+  auto i = g4global->threads.find(ti);
+  if (i == g4global->threads.end()) {
+    //cerr << "Thread created at proc " << p->get_id() << endl;
+    g4global->threads.insert({ti, { .global = g4global }});
+    return g4global->threads[ti];
+  } else {
+    cached = &i->second;
+    cached_ti = ti;
+    return i->second;
+  }  
+}
+
 void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder decoder) {
   if (!p->get_log_active()) return;
 
@@ -440,7 +472,15 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   auto out = g4ts.out;
   
   if (p->get_log_g4_trace_config()->verbose) {
-    *out << "{ " << hex << setw(8) << right << p->get_state()->XPR[4] << " " << pc << /*" " << insn.bits() <<*/ dec << " " << left << setw(32) << p->get_disassembler()->disassemble(insn) << " } ";
+    auto ti = g4trace_get_thread_identifier(p);
+    *out << "{ "
+         << hex << setw(16) << right << ti.satp << " "
+         << hex << setw(16) << right << ti.tp << " "
+         //<< hex << setw(16) << hash<G4ThreadIdentifier>{}(ti) << " "
+         << setw(8) << right << pc << " "
+         //<< setw(8) << right << insn.bits() << " "
+         << dec
+         << " " << left << setw(32) << p->get_disassembler()->disassemble(insn) << " } ";
     out->flush(); // TODO remove this, now here to ensure output is complete in case of assert.
   }
 
@@ -456,9 +496,10 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   auto& loads = p->get_state()->log_mem_read;
   auto& stores = p->get_state()->log_mem_write;
 
-    if (g4ts.instructions_traced >= p->get_log_g4trace_max_instructions()) {
+  if (g4ts.instructions_traced >= p->get_log_g4trace_max_instructions()) {
     *out << "END " << hex << g4ts.lastpc << dec << endl;
     // TODO maybe out->close();
+    p->set_log_active(false);
     return; // don't print operands, don't update lastpc
   }
 
@@ -667,13 +708,13 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     assert(g4i.type == G4InstType::B || g4i.type == G4InstType::C || g4i.type == G4InstType::c || g4i.type == G4InstType::J || g4i.type == G4InstType::j || g4i.type == G4InstType::r);
     *out << "t" << (static_cast<int64_t>(g4i.target_address - pc));
     if (g4i.type == G4InstType::B) {
-      if (g4ts.setpc_done) {
+      if (p->get_state()->g4trace_setpc_done) {
         *out << "*";
-        assert(g4i.target_address == g4ts.last_setpc);
+        assert(g4i.target_address == p->get_state()->g4trace_last_setpc);
       }
     } else {
-      assert(g4ts.setpc_done);
-      assert(g4i.target_address == g4ts.last_setpc);
+      assert(p->get_state()->g4trace_setpc_done);
+      assert(g4i.target_address == p->get_state()->g4trace_last_setpc);
     }
   }
 
@@ -684,6 +725,9 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
 
 void g4trace_write_index(G4TraceConfig *global) {
   if (global && global->enable) {
+    for (auto& [_, t] : global->threads) {
+      g4trace_close_trace_file(t);
+    }
     if (global->num_traces > 0) {
       auto index_filename = filesystem::path(global->dest) / "trace.index";
       ofstream index_file(index_filename, ios::out);

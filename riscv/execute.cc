@@ -14,8 +14,8 @@ static void commit_log_and_g4trace_reset(processor_t* p)
   p->get_state()->log_reg_write.clear();
   p->get_state()->log_mem_read.clear();
   p->get_state()->log_mem_write.clear();
-  p->get_state()->g4trace.setpc_done = false;
-  p->get_state()->g4trace.last_setpc = 0;
+  p->get_state()->g4trace_setpc_done = false;
+  p->get_state()->g4trace_last_setpc = 0;
 
 }
 
@@ -225,8 +225,7 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
   }
   p->update_histogram(pc);
 
-  if (fetch.insn.bits() == 0x10303013 /* sltiu zero,zero,G4_TRACE_ANNOTATION_ID_END_REGION_OF_INTEREST */
-      || p->get_state()->g4trace.instructions_traced >= p->get_log_g4trace_max_instructions()) {
+  if (fetch.insn.bits() == 0x10303013 /* sltiu zero,zero,G4_TRACE_ANNOTATION_ID_END_REGION_OF_INTEREST */) {
     // End ROI
     p->set_log_active(false);
   }
@@ -314,7 +313,7 @@ void processor_t::step(size_t n)
 
           in_wfi = false;
           insn_fetch_t fetch = mmu->load_insn(pc);
-          if (debug && !state.serialized && log_active && !(state.prv && log_filter_privileged))
+          if (debug && !state.serialized && get_log_active() && !(state.prv && log_filter_privileged))
             disasm(fetch.insn);
           pc = execute_insn_logged(this, pc, fetch);
           advance_pc();

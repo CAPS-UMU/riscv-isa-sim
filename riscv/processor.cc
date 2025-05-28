@@ -149,7 +149,7 @@ void processor_t::enable_log_commits()
 }
 
 void processor_t::enable_g4trace(G4TraceConfig* global) {
-  get_state()->g4trace.global = global;
+  get_state()->g4trace_global = global;
 }
 
 void processor_t::reset()
@@ -378,7 +378,7 @@ void processor_t::take_trap(trap_t& t, reg_t epc)
 {
   unsigned max_xlen = isa.get_max_xlen();
 
-  if (debug && log_active) {
+  if (debug && get_log_active()) {
     std::stringstream s; // first put everything in a string, later send it to output
     s << "core " << std::dec << std::setfill(' ') << std::setw(3) << id
       << ": exception " << t.name() << ", epc 0x"
@@ -656,7 +656,7 @@ processor_t::decoded_insn_t processor_t::decode_insn(insn_t insn)
     opcode_cache[idx].replace(insn.bits(), desc);
   }
 
-  auto exec_func = desc->func(xlen, rve, (log_commits_enabled || get_log_g4trace_enabled()) && log_active);
+  auto exec_func = desc->func(xlen, rve, (log_commits_enabled || get_log_g4trace_enabled()) && get_log_active());
   auto g4_func = desc->g4trace_decoder;
 
   return {exec_func, g4_func};

@@ -6,6 +6,21 @@
 #include <cstdint>
 #include <limits>
 #include <ostream>
+#include <unordered_map>
+
+struct G4TracePerProcState;
+
+struct G4ThreadIdentifier {
+  reg_t satp;
+  reg_t tp;
+  bool operator==(const G4ThreadIdentifier&) const = default;
+};
+template<>
+struct std::hash<G4ThreadIdentifier> {
+  inline size_t operator()(const G4ThreadIdentifier& x) const {
+    return hash<reg_t>{}(x.satp * 5 + x.tp);
+  }
+};
 
 struct G4TraceConfig {
   bool enable = false;
@@ -14,18 +29,24 @@ struct G4TraceConfig {
   int num_traces = 0; // number of harts that have started tracing
   uint64_t max_trace_instructions = std::numeric_limits<decltype(max_trace_instructions)>::max();
   std::string compression = "lzma-3";//"zstd-13";// "none";
+  std::unordered_map<G4ThreadIdentifier,G4TracePerProcState> threads; 
 };
 
 struct G4TracePerProcState {
   G4TraceConfig *global = nullptr;
   int thread_id = -1; // initialized when the trace file is opened.
+  bool log_active = false; // START_TRACING hint seen, TODO: add option --log-use-roi-markers to initialize
   bool has_started = false; // The first instruction address has been printed (to avoid doing it twice if the START_TRACING hint has appeared already)
   std::ostream *out = nullptr;
   reg_t lastpc = 0;
-  bool setpc_done = false;
-  reg_t last_setpc = 0;
   uint64_t instructions_traced = 0;
-  int sync_marker_level = 0; // currently expected to be 0 or 1 
+  int sync_marker_level = 0; // currently expected to be 0 or 1
+  ~G4TracePerProcState() {
+    if (out) {
+      delete out;
+      out = nullptr;
+    }
+  }
 };
 
 struct G4TraceRegId {
@@ -82,6 +103,7 @@ void g4trace_open_trace_file(G4TracePerProcState& s);
 void g4trace_close_trace_file(G4TracePerProcState& s);
 void g4trace_write_index(G4TraceConfig *global);
 bool g4trace_parse_compression_config(const std::string& opts, std::string& method, int& preset);
+G4TracePerProcState& g4trace_get_thread_state(processor_t *p);
 
 // From g4tracer-interface.h
 enum G4TraceAnnotationId {

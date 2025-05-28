@@ -194,7 +194,9 @@ struct state_t
   reg_t last_inst_priv;
   int last_inst_xlen;
   int last_inst_flen;
-  G4TracePerProcState g4trace;
+  G4TraceConfig *g4trace_global = nullptr;
+  bool g4trace_setpc_done = false;  // actually used only for debugging
+  reg_t g4trace_last_setpc = 0;  // actually used only for debugging
 
   elp_t elp;
 
@@ -263,20 +265,19 @@ public:
   void enable_log_commits();
   void enable_g4trace(G4TraceConfig* global);
   bool get_log_commits_enabled() const { return log_commits_enabled; }
-  bool get_log_active() const { return log_active; }
+  bool get_log_active() { return get_log_g4_trace_state().log_active; }
   void set_log_active(bool v) {
-    log_active = v;
-    if (get_log_g4trace_enabled() && !get_state()->g4trace.out) {
+    get_log_g4_trace_state().log_active = v;
+    if (get_log_g4trace_enabled() && !get_log_g4_trace_state().out) {
       g4trace_open_trace_file(get_log_g4_trace_state());
     }
   }
   bool get_log_filter_privileged() const { return log_filter_privileged; }
-  const G4TracePerProcState& get_log_g4_trace_state() const { return get_state()->g4trace; }
-  G4TracePerProcState& get_log_g4_trace_state() { return get_state()->g4trace; }
-  const G4TraceConfig* get_log_g4_trace_config() const { return get_state()->g4trace.global; }
+  G4TracePerProcState& get_log_g4_trace_state() { return g4trace_get_thread_state(this); }
+  G4TraceConfig* get_log_g4_trace_config() const { return get_state()->g4trace_global; }
   bool get_log_g4trace_enabled() const { return get_log_g4_trace_config() && get_log_g4_trace_config()->enable; }
-  bool get_log_g4trace_has_started() const { return get_log_g4_trace_state().has_started; }
-  void set_log_g4trace_has_started() { assert(!get_log_g4trace_has_started()); get_state()->g4trace.has_started = true; }
+  bool get_log_g4trace_has_started() { return get_log_g4_trace_state().has_started; }
+  void set_log_g4trace_has_started() { assert(!get_log_g4trace_has_started()); get_log_g4_trace_state().has_started = true; }
   uint64_t get_log_g4trace_max_instructions() const { return get_log_g4_trace_config()->max_trace_instructions; }
   void reset();
   void step(size_t n); // run for n cycles
@@ -407,7 +408,6 @@ private:
   bool histogram_enabled;
   bool log_commits_enabled;
   FILE *log_file;
-  bool log_active = false; // TODO: add option --log-use-roi-markers
   bool log_filter_privileged = true; // TODO: add option
   std::ostream sout_; // needed for socket command interface -s, also used for -d and -l, but not for --log
   bool halt_on_reset;
