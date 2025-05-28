@@ -11,15 +11,19 @@ It adds the following command line options to Spike:
  - TODO: add option --log-use-roi-markers (always enabled for now)
  - TODO: add option --log-filter-privileged (always enabled for now)
 
+Some other options are added to control the format of the trace and for debugging.
+
 The build procedure is the same as upstream Spike. You can read or use the build-riscv-tracer script to build the tracer and the required riscv-spike-sdk in a way that has already been tested. Note that building riscv-spike-sdk is sometimes tedious because some of the involved repositories tend to fail temporarily.
  
 Programs can be simulated (and traced) in all the same ways as with upstream Spike. The script spike-run-fs can be used to run a program using full system simulation using the kernel and initrd built with buildroot by riscv-spike-sdk (see buildroot documentation for possible customizations). An additional temporary initrd will be created with the program to be simulated and some supporting files. See «spike-run-fs --help» and the source of the script for more information.
 
-The traced programs are expected to be annotated using the hint instructions defined in g4tracer-interface/g4tracer-interface.h. At least g4tracer_init_thread, g4tracer_start_tracing, g4tracer_start_ROI and g4tracer_end_ROI should be called by each thread that needs to be traced. The resulting trace will only contain traces for processors that have called g4tracer_start_tracing. 
+The traced programs are expected to be annotated using the hint instructions defined in g4tracer-interface/g4tracer-interface.h. At least g4tracer_init_thread, g4tracer_start_tracing, g4tracer_start_ROI and g4tracer_end_ROI should be called by each thread that needs to be traced. Syncronization needs to be annotated using the g4trace_*_sm_* funtions. The resulting trace will only contain traces for user level threads that have called g4tracer_start_tracing. 
  
 Tracing of priviledged (OS) code is not supported. Priviledged instructions will be filtered.
 
-The tracer works per hart, not per OS thread/process. To get useful application level traces, thread migration should be avoided. The recommended way to do this is to bind threads to processors calling g4tracer_init_current_thread just after thread creation before calling g4tracer_start_tracing. The number of processors configured in Spike should be equal or higher than the number of threads used by the program. It is also useful to configure spike with an extra core to reduce interfence from the OS and other processes running in the system. 
+The tracer works per per OS thread. Threads are identified by the tp register and satp csr. This is expected to work reliably for user level threads as long as the phisical address of the root of the page table of the traced process does not change during execution. Several processes can be traced simultaneously, but there is no information in the trace about which thread belongs to which proccess. 
+
+Thread binding and the number of processors used by spike is mostly irrelevant for the traces (except that different scheduling by the OS may produce different traces when syncronization is involved).
  
 Test programs are in tracer_test.
 
@@ -35,7 +39,6 @@ Known Bugs
 =================
 
  - ecall instructions are currently missing from the trace (and possibly other instructions that generate traps)
- - context switches will result in mixing traces from different threads
 
 Upstream README
 =================
