@@ -194,7 +194,7 @@ struct state_t
   reg_t last_inst_priv;
   int last_inst_xlen;
   int last_inst_flen;
-  G4TraceConfig *g4trace_global = nullptr;
+  G4TraceGlobalState *g4trace_global = nullptr;
   bool g4trace_setpc_done = false;  // actually used only for debugging
   reg_t g4trace_last_setpc = 0;  // actually used only for debugging
 
@@ -263,22 +263,19 @@ public:
   void set_debug(bool value);
   void set_histogram(bool value);
   void enable_log_commits();
-  void enable_g4trace(G4TraceConfig* global);
+  void enable_g4trace(G4TraceGlobalState* global);
   bool get_log_commits_enabled() const { return log_commits_enabled; }
-  bool get_log_active() { return get_log_g4_trace_state().log_active; }
+  bool get_log_active() { return get_log_g4_shared_state().log_active; }
   void set_log_active(bool v) {
-    get_log_g4_trace_state().log_active = v;
-    if (get_log_g4trace_enabled() && !get_log_g4_trace_state().out) {
-      g4trace_open_trace_file(get_log_g4_trace_state());
+    get_log_g4_shared_state().log_active = v;
+    if (get_log_g4trace_enabled() && !get_log_g4_shared_state().out) {
+      g4trace_open_trace_file(get_log_g4_shared_state());
     }
   }
   bool get_log_filter_privileged() const { return log_filter_privileged; }
-  G4TracePerProcState& get_log_g4_trace_state() { return g4trace_get_thread_state(this); }
-  G4TraceConfig* get_log_g4_trace_config() const { return get_state()->g4trace_global; }
-  bool get_log_g4trace_enabled() const { return get_log_g4_trace_config() && get_log_g4_trace_config()->enable; }
-  bool get_log_g4trace_has_started() { return get_log_g4_trace_state().has_started; }
-  void set_log_g4trace_has_started() { assert(!get_log_g4trace_has_started()); get_log_g4_trace_state().has_started = true; }
-  uint64_t get_log_g4trace_max_instructions() const { return get_log_g4_trace_config()->max_trace_instructions; }
+  G4TracePerThreadState& get_log_g4_shared_state() { return g4trace_get_thread_state(this); }
+  G4TraceGlobalState* get_log_g4_global_state() const { return get_state()->g4trace_global; }
+  bool get_log_g4trace_enabled() const { return get_log_g4_global_state() && get_log_g4_global_state()->enable; }
   void reset();
   void step(size_t n); // run for n cycles
   void put_csr(int which, reg_t val);

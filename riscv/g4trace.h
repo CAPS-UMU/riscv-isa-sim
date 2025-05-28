@@ -8,7 +8,6 @@
 #include <ostream>
 #include <unordered_map>
 
-struct G4TracePerProcState;
 
 struct G4ThreadIdentifier {
   reg_t satp;
@@ -22,18 +21,20 @@ struct std::hash<G4ThreadIdentifier> {
   }
 };
 
-struct G4TraceConfig {
+struct G4TracePerThreadState;
+
+struct G4TraceGlobalState {
   bool enable = false;
   bool verbose = false;
   const char *dest = nullptr;
   int num_traces = 0; // number of harts that have started tracing
   uint64_t max_trace_instructions = std::numeric_limits<decltype(max_trace_instructions)>::max();
   std::string compression = "lzma-3";//"zstd-13";// "none";
-  std::unordered_map<G4ThreadIdentifier,G4TracePerProcState> threads; 
+  std::unordered_map<G4ThreadIdentifier,G4TracePerThreadState> threads; 
 };
 
-struct G4TracePerProcState {
-  G4TraceConfig *global = nullptr;
+struct G4TracePerThreadState {
+  G4TraceGlobalState *global = nullptr;
   int thread_id = -1; // initialized when the trace file is opened.
   bool log_active = false; // START_TRACING hint seen, TODO: add option --log-use-roi-markers to initialize
   bool has_started = false; // The first instruction address has been printed (to avoid doing it twice if the START_TRACING hint has appeared already)
@@ -41,7 +42,7 @@ struct G4TracePerProcState {
   reg_t lastpc = 0;
   uint64_t instructions_traced = 0;
   int sync_marker_level = 0; // currently expected to be 0 or 1
-  ~G4TracePerProcState() {
+  ~G4TracePerThreadState() {
     if (out) {
       delete out;
       out = nullptr;
@@ -99,11 +100,11 @@ typedef G4InstInfo (*G4TraceDecoder)(processor_t *p, reg_t pc, insn_t insn);
 
 G4TraceDecoder g4trace_get_decoder(const std::string& instr_name);
 void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder decoder);
-void g4trace_open_trace_file(G4TracePerProcState& s);
-void g4trace_close_trace_file(G4TracePerProcState& s);
-void g4trace_write_index(G4TraceConfig *global);
+void g4trace_open_trace_file(G4TracePerThreadState& s);
+void g4trace_close_trace_file(G4TracePerThreadState& s);
+void g4trace_close_and_write_index(G4TraceGlobalState *global);
 bool g4trace_parse_compression_config(const std::string& opts, std::string& method, int& preset);
-G4TracePerProcState& g4trace_get_thread_state(processor_t *p);
+G4TracePerThreadState& g4trace_get_thread_state(processor_t *p);
 
 // From g4tracer-interface.h
 enum G4TraceAnnotationId {

@@ -340,7 +340,7 @@ int main(int argc, char** argv)
   bool log_cache = false;
   bool log_commits = false;
   const char *log_path = nullptr;
-  G4TraceConfig g4trace_config;
+  G4TraceGlobalState g4trace_config;
   std::vector<std::function<extension_t*()>> extensions;
   const char* initrd = NULL;
   const char* dtb_file = NULL;

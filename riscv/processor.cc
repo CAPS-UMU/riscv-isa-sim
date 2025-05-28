@@ -148,7 +148,7 @@ void processor_t::enable_log_commits()
   mmu->flush_tlb(); // the TLB caches this setting
 }
 
-void processor_t::enable_g4trace(G4TraceConfig* global) {
+void processor_t::enable_g4trace(G4TraceGlobalState* global) {
   get_state()->g4trace_global = global;
 }
 

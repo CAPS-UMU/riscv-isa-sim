@@ -445,14 +445,14 @@ static G4ThreadIdentifier g4trace_get_thread_identifier(processor_t *p) {
   return {satp, tp};
 };
 
-G4TracePerProcState& g4trace_get_thread_state(processor_t *p) {
+G4TracePerThreadState& g4trace_get_thread_state(processor_t *p) {
   auto ti = g4trace_get_thread_identifier(p);
   static G4ThreadIdentifier cached_ti{0x3,0x3}; // to avoid accesing the hash table every time
-  static G4TracePerProcState* cached = nullptr;
+  static G4TracePerThreadState* cached = nullptr;
   if (cached_ti == ti) {
     return *cached;
   }
-  auto g4global = p->get_log_g4_trace_config();
+  auto g4global = p->get_log_g4_global_state();
   auto i = g4global->threads.find(ti);
   if (i == g4global->threads.end()) {
     //cerr << "Thread created at proc " << p->get_id() << endl;
@@ -468,10 +468,10 @@ G4TracePerProcState& g4trace_get_thread_state(processor_t *p) {
 void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder decoder) {
   if (!p->get_log_active()) return;
 
-  auto& g4ts = p->get_log_g4_trace_state();
+  auto& g4ts = p->get_log_g4_shared_state();
   auto out = g4ts.out;
   
-  if (p->get_log_g4_trace_config()->verbose) {
+  if (p->get_log_g4_global_state()->verbose) {
     auto ti = g4trace_get_thread_identifier(p);
     *out << "{ "
          << hex << setw(16) << right << ti.satp << " "
@@ -485,7 +485,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   }
 
   if (p->get_state()->last_inst_priv && p->get_log_filter_privileged()) {
-    if (p->get_log_g4_trace_config()->verbose) {
+    if (p->get_log_g4_global_state()->verbose) {
       *out << "{ PRIV }\n";
     }
     return;
@@ -496,7 +496,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   auto& loads = p->get_state()->log_mem_read;
   auto& stores = p->get_state()->log_mem_write;
 
-  if (g4ts.instructions_traced >= p->get_log_g4trace_max_instructions()) {
+  if (g4ts.instructions_traced >= g4ts.global->max_trace_instructions) {
     *out << "END " << hex << g4ts.lastpc << dec << endl;
     // TODO maybe out->close();
     p->set_log_active(false);
@@ -570,10 +570,10 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     prefix = "c";
     assert(g4i.target_address != g4trace_invalid_target_address);
   } else if (g4i.type == G4InstType::START_TRACING) {
-    if (!p->get_log_g4trace_has_started()) {
+    if (!g4ts.has_started) {
       g4ts.lastpc = pc + 4; // Address of next instruction, which will be the first in the trace
       *out << hex << g4ts.lastpc << dec << "\n";
-      p->set_log_g4trace_has_started();
+      g4ts.has_started = true;
       return; // don't print operands
     } else {
       // trace has already started, we have found the marker twice (maybe two threads are runningin the same hart)
@@ -624,7 +624,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   } else if (g4i.type == G4InstType::END_SM) {
     assert(g4ts.sync_marker_level > 0);
     g4ts.sync_marker_level = g4ts.sync_marker_level - 1;
-    if (p->get_log_g4_trace_config()->verbose) {
+    if (p->get_log_g4_global_state()->verbose) {
       *out << "{ END_SM }\n";
     }
     assert(g4ts.sync_marker_level == 0); // nesting not allowed for now
@@ -636,7 +636,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
 
   if (g4ts.sync_marker_level > 0) {
     // don't print anything, don't update lastpc
-    if (p->get_log_g4_trace_config()->verbose) {
+    if (p->get_log_g4_global_state()->verbose) {
       *out << "{ SM " << g4ts.sync_marker_level << " }\n";
     }
     return;
@@ -644,7 +644,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   
   *out << prefix << diffpc;
 
-  assert(p->get_log_g4_trace_config()->verbose || g4i.type != G4InstType::UNKNOWN);
+  assert(p->get_log_g4_global_state()->verbose || g4i.type != G4InstType::UNKNOWN);
   assert(loads.empty() || (g4i.type == G4InstType::L || g4i.type == G4InstType::LA || g4i.type == G4InstType::LR || g4i.type == G4InstType::RMW));
   assert(stores.empty() || (g4i.type == G4InstType::S || g4i.type == G4InstType::SA || g4i.type == G4InstType::SC || g4i.type == G4InstType::RMW));
 
@@ -723,7 +723,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
 }
 
 
-void g4trace_write_index(G4TraceConfig *global) {
+void g4trace_close_and_write_index(G4TraceGlobalState *global) {
   if (global && global->enable) {
     for (auto& [_, t] : global->threads) {
       g4trace_close_trace_file(t);
@@ -763,7 +763,7 @@ bool g4trace_parse_compression_config(const string& opts, string& method, int& p
   }
 }
 
-void g4trace_open_trace_file(G4TracePerProcState& s) {
+void g4trace_open_trace_file(G4TracePerThreadState& s) {
   assert(s.global->enable);
   assert(s.out == nullptr);
   assert(s.thread_id == -1);
@@ -788,7 +788,7 @@ void g4trace_open_trace_file(G4TracePerProcState& s) {
   }
 }
 
-void g4trace_close_trace_file(G4TracePerProcState& s) {
+void g4trace_close_trace_file(G4TracePerThreadState& s) {
   if (s.out) {
     s.out->flush();
     delete s.out;

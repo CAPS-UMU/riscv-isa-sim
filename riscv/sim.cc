@@ -264,7 +264,7 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
 
 sim_t::~sim_t()
 {
-  g4trace_write_index(g4trace_global);
+  g4trace_close_and_write_index(g4trace_global);
   delete debug_mmu;
 }
 
@@ -319,7 +319,7 @@ void sim_t::set_histogram(bool value)
   }
 }
 
-void sim_t::configure_log(bool enable_log, bool enable_commitlog, G4TraceConfig* g4trace_config)
+void sim_t::configure_log(bool enable_log, bool enable_commitlog, G4TraceGlobalState* g4trace_config)
 {
   log = enable_log;
 

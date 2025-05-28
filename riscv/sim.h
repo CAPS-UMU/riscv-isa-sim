@@ -49,7 +49,7 @@ public:
   //
   // If enable_log is true, an instruction trace will be generated. If
   // enable_commitlog is true, so will the commit results
-  void configure_log(bool enable_log, bool enable_commitlog, G4TraceConfig* g4trace_config);
+  void configure_log(bool enable_log, bool enable_commitlog, G4TraceGlobalState* g4trace_config);
 
   void set_procs_debug(bool value);
   void set_remote_bitbang(remote_bitbang_t* remote_bitbang) {
@@ -86,7 +86,7 @@ private:
 
   FILE *cmd_file; // pointer to debug command input file
 
-  G4TraceConfig* g4trace_global = nullptr;
+  G4TraceGlobalState* g4trace_global = nullptr;
 
   std::optional<unsigned long long> instruction_limit;
 
