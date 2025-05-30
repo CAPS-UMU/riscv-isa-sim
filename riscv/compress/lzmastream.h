@@ -101,33 +101,33 @@ protected:
     if (end_of_stream)
       return EOF;
 
-    if (strm.avail_in <= 0) {
-      source.read(inbuf, sizeof(inbuf));
-      if (source.eof() && source.gcount() == 0) {
-        return EOF;
-      }
-      
-      strm.next_in = (const uint8_t *) inbuf;
-      strm.avail_in = source.gcount();
-    }
-    
-    lzma_action action = source.eof() ? LZMA_FINISH : LZMA_RUN;
-
     strm.next_out = (uint8_t *) outbuf;
     strm.avail_out = sizeof(outbuf);
-    
-    lzma_ret ret = lzma_code(&strm, action);
-    
-    if (ret == LZMA_STREAM_END) {
-      end_of_stream = true;
-    } else {
-      assert(ret == LZMA_OK);
-    }
-    
-    auto out_size = sizeof(outbuf) - strm.avail_out;
-    assert(out_size > 0);
+    size_t out_size;
+    do {
+      if (strm.avail_in <= 0) {
+        source.read(inbuf, sizeof(inbuf));
+        if (source.eof() && source.gcount() == 0) {
+          return EOF;
+        }
+
+        strm.next_in = (const uint8_t *) inbuf;
+        strm.avail_in = source.gcount();
+      }
+
+      lzma_action action = source.eof() ? LZMA_FINISH : LZMA_RUN;
+      lzma_ret ret = lzma_code(&strm, action);
+
+      if (ret == LZMA_STREAM_END) {
+        end_of_stream = true;
+      } else {
+        assert(ret == LZMA_OK);
+      }
+
+      out_size = sizeof(outbuf) - strm.avail_out;
+    } while (out_size == 0);
     setg(outbuf, outbuf, outbuf + out_size);
-    
+
     return (unsigned char) *gptr();
 }
 
@@ -159,7 +159,7 @@ int main() {
   const size_t buffer_size = 16 * 1024;
   char buffer[buffer_size];
   LzmaOStream lzma_out(std::cout);
-  
+
   while (std::cin.read(buffer, buffer_size) || std::cin.gcount() > 0) {
     lzma_out.write(buffer, std::cin.gcount());
   }
