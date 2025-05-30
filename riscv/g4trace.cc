@@ -417,10 +417,12 @@ static void g4trace_print_memory_access_addresses(const commit_log_mem_t& access
   } else if (g4i.memory_access_type ==  G4VectorMemAccessType::INDEXED) {
     *out << "s" << size << "e" << num_items;
     for (auto i = accesses.cbegin(); i != accesses.cend(); i++) {
-      if (i != accesses.cbegin()) {
+      if (i == accesses.cbegin()) {
+        *out << " ";
+      } else {
         *out << ",";
       }
-      *out << " " << hex << get<0>(*i);
+      *out << hex << get<0>(*i);
     }
     *out << dec;
   } else {
