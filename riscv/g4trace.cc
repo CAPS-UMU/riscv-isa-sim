@@ -474,7 +474,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   auto out = g4ts.out;
   
   if (p->get_log_g4_global_state()->verbose) {
-    auto ti = g4trace_get_thread_identifier(p);
+    //auto ti = g4trace_get_thread_identifier(p);
     *out << "{ "
          //<< hex << setw(16) << right << ti.satp << " "
          //<< hex << setw(16) << right << ti.tp << " "
