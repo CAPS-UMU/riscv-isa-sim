@@ -21,7 +21,7 @@ The traced programs are expected to be annotated using the hint instructions def
  
 Tracing of priviledged (OS) code is not supported. Priviledged instructions will be filtered.
 
-The tracer works per per OS thread. Threads are identified by the tp register and satp csr. This is expected to work reliably for user level threads as long as the phisical address of the root of the page table of the traced process does not change during execution. Several processes can be traced simultaneously, but there is no information in the trace about which thread belongs to which proccess. 
+The tracer works per OS thread. Threads are identified by the `tp` register and `satp` csr. This is expected to work reliably for user level threads as long as the phisical address of the root of the page table of the traced process does not change during execution. Several processes can be traced simultaneously, but there is no information in the trace about which thread belongs to which proccess. 
 
 Thread binding and the number of processors used by spike is mostly irrelevant for the traces (except that different scheduling by the OS may produce different traces when syncronization is involved).
  
@@ -29,11 +29,14 @@ Test programs are in tracer_test.
 
 Examples of use:
 
+```
    # The spike-run-fs script  allows to do full system simulation and passing any argument to Spike. It should work with upstream Spike also.
    ./spike-run-fs -s--log-g4trace -s--log-g4trace-dest=./trace-output -- ./tracer_tests/test02/test02.gcc.riscv64gcv
-
+```
+```
    # The trace-bencmark script is like spike-run-fs but adds tracing options by default.
    ./trace-benchmark --num-procs=5 --trace-destination=/tmp/test-trace tracer_tests/a02-near-atomic-friendly/a02-near-atomic-friendly.gcc.riscv64gc
+```
 
 Known Bugs
 =================
