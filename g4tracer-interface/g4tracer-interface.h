@@ -14,10 +14,14 @@
 #include <stdatomic.h>
 #include <sys/sysinfo.h>
 
-#ifdef __cpp
+#ifdef __cplusplus
+#include <atomic>
 #include <cstdint>
 #include <cstdlib>
 #include <cstdbool>
+#if __cplusplus < 202302L
+#define atomic_int std::atomic<int>
+#endif
 #else
 #include <stdbool.h>
 #include <stdint.h>
