@@ -274,8 +274,8 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
       return ret;
     };
   } else if (eq_any(instr_name,
-                    "amoadd_d", "amoadd_w", "amoand_d", "amoand_w", "amomax_d", "amomaxu_d", "amomaxu_w", "amomax_w", "amomin_d",
-                    "amominu_d", "amominu_w", "amomin_w", "amoor_d", "amoor_w", "amoswap_d", "amoswap_w", "amoxor_d", "amoxor_w",
+                    "amoadd_d", "amoadd_w", "amoadd_b", "amoand_d", "amoand_w", "amomax_d", "amomaxu_d", "amomaxu_w", "amomax_w", "amomin_d",
+                    "amominu_d", "amominu_w", "amomin_w", "amoor_d", "amoor_w", "amoor_bb", "amoswap_d", "amoswap_w", "amoxor_d", "amoxor_w",
                     "amoadd_h", "amoand_b", "amoand_h", "amocas_b", "amocas_d", "amocas_h", "amocas_q", "amocas_w", "amomax_b",
                     "amomax_h", "amomaxu_b", "amomaxu_h", "amomin_b", "amomin_h", "amominu_b", "amominu_h", "amoor_b", "amoor_h",
                     "amoswap_b", "amoswap_h", "amoxor_b", "amoxor_h")) {
@@ -321,7 +321,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vfredosum_vs", "vfredusum_vs",
                     "fsub_s", "fsub_d", "fsub_q", "fsub_h",
                     "vfsub_vf", "vfsub_vv",
-                    "feq_s", "feq_d", "feq_q", "feq_h", "vmfeq_vf", "vmfeq_vv" // Maybe these should be GENERIC
+                    "feq_s", "feq_d", "feq_q", "feq_h", "vmfeq_vf", "vmfeq_vv", "vmfne_vf", "vmfne_vv" // Maybe these should be GENERIC
                )) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::A }; };
   } else if (eq_any(instr_name,
@@ -362,23 +362,28 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vmacc_vv", "vmacc_vx", "vmadc_vv", "vmadc_vx", "vmadc_vi", "vmadc_vim", "vmadc_vvm",
                     "vmadc_vxm", "vmadd_vv", "vmadd_vx",
                     "vmand_mm", "vmandn_mm", "vmax_vv", "vmax_vx", "vmaxu_vv", "vmaxu_vx",
+                    "vmxnor_mm", "vmxor_mm",
                     "vmin_vv", "vmin_vx", "vminu_vv", "vminu_vx", "vmnand_mm", "vmnor_mm", "vmor_mm", "vmorn_mm",
+                    "vfmax_vf", "vfmax_vv", "vfmin_vf", "vfmin_vv",
                     "vmsbc_vv", "vmsbc_vx", "vmsbc_vvm", "vmsbc_vxm", "vmsbf_m", "vmseq_vi", "vmseq_vv", "vmseq_vx",
                     "vmsgt_vi", "vmsgt_vx", "vmsgtu_vi", "vmsgtu_vx", "vmsif_m", "vmsle_vi", "vmsle_vv", "vmsle_vx",
                     "vmsleu_vi", "vmsleu_vv", "vmsleu_vx", "vmslt_vv", "vmslt_vx", "vmsltu_vv", "vmsltu_vx", "vmsne_vi",
                     "vmsne_vv", "vmsne_vx", "vmsof_m",
                     "vmerge_vim", "vmerge_vvm", "vmerge_vxm", "vfirst_m",
-                    "vmfle_vf", "vmfle_vv", "vmflt_vf", "vmflt_vv", "vfsgnj_vf", "vfsgnj_vv", "vfsgnjn_vf",
+                    "vfmerge_vfm",
+                    "vmfle_vf", "vmfle_vv", "vmflt_vf", "vmflt_vv",
+                    "vmfge_vf", "vmfge_vv", "vmfgt_vf", "vmfgt_vv",
+                    "vfsgnj_vf", "vfsgnj_vv", "vfsgnjn_vf",
                     "vfsgnjn_vv", "vfsgnjx_vf", "vfsgnjx_vv",
                     "vrgather_vi", "vrgather_vv", "vrgather_vx", "vrgatherei16_vv",
                     "vfslide1down_vf", "vfslide1up_vf", "vcompress_vm",
-                    "vnsra_wi", "vnsra_wv", "vnsra_wx", "vnsrl_wi", "vnsrl_wv", "vnsrl_wx")) {
+                    "vnsra_wi", "vnsra_wv", "vnsra_wx", "vnsrl_wi", "vnsrl_wv", "vnsrl_wx",
+                    "vfrec7_v")) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::GENERIC }; };
   } else if (eq_any(instr_name,
                     "vfmacc_vf", "vfmacc_vv", "vfmadd_vf", "vfmadd_vv", "vfnmacc_vf", "vfnmacc_vv",
                     "vfnmadd_vf", "vfnmadd_vv", "vfnmsac_vf", "vfnmsac_vv", "vfnmsub_vf", "vfnmsub_vv",
                     "vfmsac_vf", "vfmsac_vv", "vfmsub_vf", "vfmsub_vv")) {
-
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::M }; };
   } else if (eq_any(instr_name,
                     "csrrc", "csrrci", "csrrs", "csrrsi", "csrrw", "csrrwi")) {
