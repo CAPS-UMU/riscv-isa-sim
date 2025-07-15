@@ -401,42 +401,48 @@ G4TraceDecoder g4trace_get_decoder(const string& instr_name) {
 }
 
 static void g4trace_print_memory_access_addresses(const commit_log_mem_t& accesses, const G4InstInfo& g4i, ostream *out) {
-  const auto& first = *accesses.begin();
-  auto addr_first = get<0>(first);
-  int size = get<2>(first);
-  for (const auto& i : accesses) {
-    assert(get<2>(i) == size); // all accesses have the same size
-  }
   auto num_items = accesses.size();
+  if (num_items > 0) {
+    const auto& first = *accesses.begin();
+    auto addr_first = get<0>(first);
+    int size = get<2>(first);
+    for (const auto& i : accesses) {
+      assert(get<2>(i) == size); // all accesses have the same size
+    }
 
-  if (g4i.memory_access_type ==  G4VectorMemAccessType::SCALAR) {
-    assert(num_items == 1);
-    *out << " " << hex << addr_first << " " << dec << size;
-  } else if (g4i.memory_access_type ==  G4VectorMemAccessType::CONTIGUOUS) {
-    *out << "s" << size << "e" << num_items << " " << hex << addr_first << " " << dec;
-  } else if (g4i.memory_access_type ==  G4VectorMemAccessType::STRIDED) {
-    int stride = num_items > 1
-      ? get<0>(accesses[1]) - get<0>(accesses[0])
-      : 0;
-    *out << "s" << size << "e" << num_items << " " << hex << addr_first  << dec << "+" << stride << " ";
-  } else if (g4i.memory_access_type ==  G4VectorMemAccessType::INDEXED) {
-    *out << "s" << size << "e" << num_items;
-    for (auto i = accesses.cbegin(); i != accesses.cend(); i++) {
-      if (i == accesses.cbegin()) {
-        *out << " ";
-      } else {
-        *out << ",";
+    if (g4i.memory_access_type ==  G4VectorMemAccessType::SCALAR) {
+      assert(num_items == 1);
+      *out << " " << hex << addr_first << " " << dec << size;
+    } else if (g4i.memory_access_type ==  G4VectorMemAccessType::CONTIGUOUS) {
+      *out << "s" << size << "e" << num_items << " " << hex << addr_first << " " << dec;
+    } else if (g4i.memory_access_type ==  G4VectorMemAccessType::STRIDED) {
+      int stride = num_items > 1
+        ? get<0>(accesses[1]) - get<0>(accesses[0])
+        : 0;
+      *out << "s" << size << "e" << num_items << " " << hex << addr_first  << dec << "+" << stride << " ";
+    } else if (g4i.memory_access_type ==  G4VectorMemAccessType::INDEXED) {
+      *out << "s" << size << "e" << num_items;
+      for (auto i = accesses.cbegin(); i != accesses.cend(); i++) {
+        if (i == accesses.cbegin()) {
+          *out << " ";
+        } else {
+          *out << ",";
+        }
+        *out << hex << get<0>(*i);
       }
-      *out << hex << get<0>(*i);
+      *out << dec;
+    } else {
+      *out << " TODO access_tcype=" << (int) g4i.memory_access_type << " ";
+      for (auto item : accesses) {
+        auto addr = get<0>(item);
+        int size = get<2>(item);
+        *out << " " << hex << addr << dec << " " << size;
+      }
     }
-    *out << dec;
   } else {
-    *out << " TODO access_tcype=" << (int) g4i.memory_access_type << " ";
-    for (auto item : accesses) {
-      auto addr = get<0>(item);
-      int size = get<2>(item);
-      *out << " " << hex << addr << dec << " " << size;
-    }
+    // This should only happen for vector instructions with masks
+    assert(g4i.memory_access_type !=  G4VectorMemAccessType::SCALAR);
+    *out << "e" << num_items;
   }
 }
 
@@ -652,8 +658,6 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   *out << prefix << diffpc;
 
   assert(p->get_log_g4_global_state()->verbose || g4i.type != G4InstType::UNKNOWN);
-  assert(loads.empty() || (g4i.type == G4InstType::L || g4i.type == G4InstType::LA || g4i.type == G4InstType::LR || g4i.type == G4InstType::RMW));
-  assert(stores.empty() || (g4i.type == G4InstType::S || g4i.type == G4InstType::SA || g4i.type == G4InstType::SC || g4i.type == G4InstType::RMW));
 
   g4ts.lastpc = pc;
 
@@ -703,11 +707,13 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     }
   }
 
-  if (!loads.empty()) {
+  assert(loads.empty() || (g4i.type == G4InstType::L || g4i.type == G4InstType::LA || g4i.type == G4InstType::LR || g4i.type == G4InstType::RMW));
+  if (g4i.type == G4InstType::L || g4i.type == G4InstType::LA || g4i.type == G4InstType::LR || g4i.type == G4InstType::RMW) {
     g4trace_print_memory_access_addresses(loads, g4i, out);
   }
 
-  if (!stores.empty() && g4i.type != G4InstType::RMW) { // don't print stores for RMWs, they sould be the same as loads
+  assert(stores.empty() || (g4i.type == G4InstType::S || g4i.type == G4InstType::SA || g4i.type == G4InstType::SC || g4i.type == G4InstType::RMW));
+  if (g4i.type == G4InstType::S || g4i.type == G4InstType::SA || g4i.type == G4InstType::SC) { // don't print stores for RMWs, they sould be the same as loads
     g4trace_print_memory_access_addresses(stores, g4i, out);
   }
 
