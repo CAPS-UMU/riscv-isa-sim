@@ -441,7 +441,8 @@ static void g4trace_print_memory_access_addresses(const commit_log_mem_t& access
     }
   } else {
     // This should only happen for vector instructions with masks
-    assert(g4i.memory_access_type !=  G4VectorMemAccessType::SCALAR);
+    assert(g4i.memory_access_type != G4VectorMemAccessType::SCALAR
+           || g4i.type == G4InstType::SC); // In the case of SC, we may want to calculate the address and print it (address = commit_log_read_value_xpr(p, insn.rs1())))
     *out << "e" << num_items;
   }
 }
