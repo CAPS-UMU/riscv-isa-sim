@@ -1,6 +1,6 @@
 #include "g4tracer-interface.h"
 
-const int n = 100000;
+const uint64_t n = 100000;
 int offsets[n];
 double a[n];
 double b[n];
@@ -8,13 +8,13 @@ double b[n];
 int main() {
   g4tracer_init_current_thread();
   g4tracer_start_tracing();
-  for(int i = 0; i < n; i++) {
+  for (uint64_t i = 0; i < n; i++) {
     a[i] = i;
     offsets[i] = n - i;
   }
 
   g4tracer_start_ROI_verbose();
-  for(int i = 0 ; i < n ; i++)  { // ROI
+  for (uint64_t i = 0; i < n; i++) {
     b[i] = a[offsets[i]];
     //b[offsets[i]] = a[i];
   }
