@@ -175,27 +175,27 @@ G4TRACER_INTERFACE_FUNC void g4tracer_end_sm() {
 
 #ifndef G4TRACER_VERBOSE
 // These will only work correctly if g4tracer_start_ROI and g4tracer_end_ROI are called from the same file
-#define G4TRACER_VERBOSE 1
+#define G4TRACER_VERBOSE 0
 #endif
 #ifndef G4TRACER_VERBOSE_GETTIME
-#define G4TRACER_VERBOSE_GETTIME 1
+#define G4TRACER_VERBOSE_GETTIME 0
 #endif
 #ifndef G4TRACER_VERBOSE_RDTIME
 #define G4TRACER_VERBOSE_RDTIME 0
 #endif
 #ifndef G4TRACER_VERBOSE_RDCYCLE
-#define G4TRACER_VERBOSE_RDCYCLE 0 // Using RDCYLE and RDINSTRET from userspace is deprecated and requires enabling kernel support
+#define G4TRACER_VERBOSE_RDCYCLE 1 // Using RDCYLE and RDINSTRET from userspace is deprecated and requires enabling kernel support
 #endif
 
 #if G4TRACER_VERBOSE_RDTIME
-static thread_local uint64_t _g4tracer_roi_start_rdtime;
+static thread_local uint64_t _g4tracer_roi_start_rdtime = 0;
 #endif
 #if G4TRACER_VERBOSE_GETTIME
-static thread_local uint64_t _g4tracer_roi_start_gettime;
+static thread_local uint64_t _g4tracer_roi_start_gettime = 0;
 #endif
 #if G4TRACER_VERBOSE_RDCYCLE
-static thread_local uint64_t _g4tracer_roi_start_cycle;
-static thread_local uint64_t _g4tracer_roi_start_instret;
+static thread_local uint64_t _g4tracer_roi_start_cycle = 0;
+static thread_local uint64_t _g4tracer_roi_start_instret = 0;
 #endif
 #ifdef __cpp
 #include <cstdio>
@@ -242,8 +242,10 @@ G4TRACER_INTERFACE_FUNC void g4tracer_end_ROI_verbose() {
   uint64_t elapsed_gettime = get_time_ns() - _g4tracer_roi_start_gettime;
 #endif
 #if G4TRACER_VERBOSE_RDCYCLE
-  uint64_t elapsed_cycles = g4tracer_rdcycle() - _g4tracer_roi_start_cycle;
-  uint64_t elapsed_instret = g4tracer_rdinstret() - _g4tracer_roi_start_instret;
+  uint64_t end_cycles = g4tracer_rdcycle();
+  uint64_t end_instret = g4tracer_rdinstret();
+  uint64_t elapsed_cycles = end_cycles - _g4tracer_roi_start_cycle;
+  uint64_t elapsed_instret = end_instret - _g4tracer_roi_start_instret;
 #endif
 #if G4TRACER_VERBOSE_RDTIME
   printf("rdtime:      %15ld\n", elapsed_rdtime);

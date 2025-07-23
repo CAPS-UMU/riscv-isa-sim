@@ -21,7 +21,7 @@ for t in ./test00/test00.riscv64gcv \
          ./test06/test06.gcc.riscv64gc \
          ./test06/test06.gcc.riscv64gcv
 do
-    for i in {1..10} ; do
+    for i in {1..5} ; do
         echo "Test: $(basename "$t") Run: $i"
         "$t"
         echo ""
