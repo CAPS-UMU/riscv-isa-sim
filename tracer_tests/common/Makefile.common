@@ -17,7 +17,9 @@ flags_riscv=-mabi=lp64d # not really necessary
 
 deps_common=$(g4tracer_interface_dir)/g4tracer-interface.h
 
-all: $(executables)
+objdumps:=$(foreach t,$(executables),$(t).objdump)
+
+all: $(executables) $(objdumps)
 
 clean:
 	rm -f $(executables) $(foreach e,$(executables),$(e).objdump)
