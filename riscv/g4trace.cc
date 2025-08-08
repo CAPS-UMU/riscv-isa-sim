@@ -317,8 +317,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vrem_vv", "vrem_vx", "vremu_vv", "vremu_vx")) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::GENERIC }; };
   } else if (eq_any(instr_name,
-                    "fadd_d", "fadd_h", "fadd_q", "fadd_s", "fmin_s", "fmax_s", "fmax_d", "fclass_d",
-                    "vfadd_vf", "vfadd_vv",
+                    "fadd_d", "fadd_h", "fadd_q", "fadd_s", "fmin_s", "fmax_s", "fmax_d", "fclass_d", "vfadd_vf", "vfadd_vv",
                     "vfredosum_vs", "vfredusum_vs",
                     "fsub_s", "fsub_d", "fsub_q", "fsub_h",
                     "vfsub_vf", "vfsub_vv",
