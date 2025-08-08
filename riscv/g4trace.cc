@@ -107,7 +107,8 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "slliw", "sllw", "slt", "slti", /*"sltiu",*/ "sltu", "sra", "srai", "sraiw", "sraw", "srl",
                     "srli", "srliw", "srlw", "sub", "subw", "xor", "xori",
                     "c_add", "c_addi", "c_addi4spn", "c_addw", "c_and", "c_andi",
-                    "c_li", "c_lui", "c_mv", "c_or", "c_slli", "c_srai", "c_srli", "c_sub", "c_subw", "c_xor")) {
+                    "c_li", "c_lui", "c_mv", "c_or", "c_slli", "c_srai", "c_srli", "c_sub", "c_subw", "c_xor",
+                    "sh1add", "sh2add", "sh3add", "max", "min", "minu", "maxu")) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::GENERIC }; };
   } else if (eq_any(instr_name, "beq", "bge", "bgeu", "blt", "bltu", "bne")) {
     return [](DECODER_ARGS) {
@@ -316,8 +317,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vrem_vv", "vrem_vx", "vremu_vv", "vremu_vx")) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::GENERIC }; };
   } else if (eq_any(instr_name,
-                    "fadd_d", "fadd_h", "fadd_q", "fadd_s", "fmin_s", "fmax_s", "fmax_d", "fclass_d",
-                    "vfadd_vf", "vfadd_vv",
+                    "fadd_d", "fadd_h", "fadd_q", "fadd_s", "fmin_s", "fmax_s", "fmax_d", "fclass_d", "vfadd_vf", "vfadd_vv",
                     "vfredosum_vs", "vfredusum_vs",
                     "fsub_s", "fsub_d", "fsub_q", "fsub_h",
                     "vfsub_vf", "vfsub_vv",
