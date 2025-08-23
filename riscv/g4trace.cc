@@ -234,8 +234,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "sb", "sd", "sh", "sw",
                     "vse8_v", "vse16_v", "vse32_v", "vse64_v",
                     "vsuxei8_v", "vsuxei16_v", "vsuxei32_v", "vsuxei64_v",
-                    "vsm_v",
-                    "vs1r_v" /* TODO: , "vs2r_v","vs4r_v", "vs8r_v" */)) {
+                    "vsm_v")) {
     return [](DECODER_ARGS) {
       G4InstInfo ret { G4InstType::S };
       ret.S_base_reg = g4trace_regid_x(insn.rs1());
@@ -245,6 +244,19 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
       } else {
         ret.S_data_reg = g4trace_regid_v(insn.rd());  // TODO: this is not correct for Vector Store Whole Register instructions that write more than one register (vs2r_v vs4r_v vs8r_v) and Vector Store Segment Instructions 
       }
+      return ret;
+    };
+  } else if (eq_any(instr_name,
+                    "vs1r_v", "vs2r_v" /*"vs4r_v", "vs8r_v" */)) {
+    // Vector Store Whole Register instructions that write more than one register (vs2r_v vs4r_v vs8r_v)
+    // TODO (related): Vector Store Segment Instructions 
+    return [](DECODER_ARGS) {
+      G4InstInfo ret { G4InstType::S };
+      ret.S_base_reg = g4trace_regid_x(insn.rs1());
+      ret.memory_access_type = g4trace_decode_mem_access_type(insn);
+      assert(ret.memory_access_type != G4VectorMemAccessType::SCALAR);
+      ret.S_data_reg = g4trace_regid_v(insn.rd());  
+      ret.S_data_reg_nf = insn.v_nf() + 1;
       return ret;
     };
   } else if (eq_any(instr_name,
@@ -677,7 +689,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     if (count_if(read_regs.begin(), read_regs.end(), [&](auto x){ return g4trace_regid_from_commit_log_reg_id(x.first) != g4i.S_base_reg; }) == 0) {
       // only the base_reg has been read, so the data register must be the same, or it has not been read (0 element vector store)
       assert(g4i.S_base_reg == g4i.S_data_reg || stores.empty()); // is this true in all cases?
-      assert(read_regs.size() == 1);
+      assert(read_regs.size() == 1 || g4i.S_data_reg_nf != 1);
     } else {
       for (auto item : read_regs) {
         auto g4rid = g4trace_regid_from_commit_log_reg_id(item.first);

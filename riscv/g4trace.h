@@ -88,7 +88,8 @@ const G4TraceRegId g4trace_regid_invalid = { -1 };
 struct G4InstInfo {
   G4InstType type = G4InstType::INVALID;
   G4TraceRegId S_base_reg = g4trace_regid_invalid;  // for types S, SA, RMW (not neccesary for loads) 
-  G4TraceRegId S_data_reg = g4trace_regid_invalid;  // for types S, SA, RMW (not neccesary for loads) TODO: remove this
+  G4TraceRegId S_data_reg = g4trace_regid_invalid;  // for types S, SA, RMW (not neccesary for loads)
+  int S_data_reg_nf = 1; // number of registers written/read
   G4VectorMemAccessType memory_access_type = G4VectorMemAccessType::INVALID; // for memory accesses (L, LA, LE, S, SA, RMW)
   reg_t target_address = g4trace_invalid_target_address; // for B, C, c, J, j, r
   reg_t cond_address = g4trace_invalid_target_address; // for CV_WAIT, CV_SIGNAL, CV_SIGNALCV_BCAST
