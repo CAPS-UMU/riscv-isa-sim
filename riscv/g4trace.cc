@@ -55,7 +55,7 @@ static G4VectorMemAccessType g4trace_decode_mem_access_type(insn_t insn) {
   auto w = insn.v_width();
   assert(last2bits == 0x3);
   assert(next5bits == 0x00 || next5bits == 0x01 || next5bits == 0x08 || next5bits == 0x09);
-  bool is_vector = (next5bits == 0x01 || next5bits == 0x09) && (w == 0 || w > 5);
+  bool is_vector = (next5bits == 0x01 || next5bits == 0x09) && (w == 0 || w >= 5);
   if (!is_vector) {
     return  G4VectorMemAccessType::SCALAR;
   } else {
