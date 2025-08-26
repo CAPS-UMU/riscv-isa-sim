@@ -682,24 +682,24 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     assert(g4i.S_base_reg != g4trace_regid_invalid);
     assert(g4i.S_data_reg != g4trace_regid_invalid);
     assert(count_if(read_regs.begin(), read_regs.end(), [&](auto x){ return g4trace_regid_from_commit_log_reg_id(x.first) == g4i.S_base_reg; }) == 1);
-    assert(count_if(read_regs.begin(), read_regs.end(), [&](auto x){ return g4trace_regid_from_commit_log_reg_id(x.first) == g4i.S_data_reg; }) == 1
-           || g4i.S_data_reg_nf != 1 // For some reason (spike bug? restarted instruction and vstart != 0?) for whole register stores the S_data register does not always appear in the commit log, but ¿only the last read register appears?
-           || stores.empty() // Vector stores may write 0 elements (and hence read 0 data registers)
-      );
     // print the base register as x, the rest as y (must be data) TODO: this is wrong for masked stores
     *out << "x" << g4i.S_base_reg.id;
-    if (count_if(read_regs.begin(), read_regs.end(), [&](auto x){ return g4trace_regid_from_commit_log_reg_id(x.first) != g4i.S_base_reg; }) == 0) {
-      // only the base_reg has been read, so the data register must be the same, or it has not been read (0 element vector store)
-      assert(g4i.S_base_reg == g4i.S_data_reg || stores.empty() || g4i.S_data_reg_nf != 1); // is this true in all cases?
-      assert(read_regs.size() == 1 || g4i.S_data_reg_nf != 1);
-    } else {
-      for (auto item : read_regs) {
-        auto g4rid = g4trace_regid_from_commit_log_reg_id(item.first);
-        if (g4rid != g4i.S_base_reg
-            && (!commit_log_reg_id_is_csr(item.first) || !ignore_csrs)
-            && (!commit_log_reg_id_is_vstatus(item.first) || !ignore_vstatus)) {
-          *out << "y" << g4rid.id;
-        }
+    if (count_if(read_regs.begin(), read_regs.end(), [&](auto x){ return g4trace_regid_from_commit_log_reg_id(x.first) == g4i.S_data_reg; }) == 0) {
+        // the data register has not been read.
+        // This has been observed for 0 element stores (Vector stores may write 0 elements (and hence read 0 data registers)) and for instructions right after a context switch (vstart != 0?)
+      if (!stores.empty()) {
+        // print it anyway
+        *out << "y" << g4i.S_data_reg.id;
+      } else {
+        // 0 element stores
+      }
+    }
+    for (auto item : read_regs) {
+      auto g4rid = g4trace_regid_from_commit_log_reg_id(item.first);
+      if (g4rid != g4i.S_base_reg
+          && (!commit_log_reg_id_is_csr(item.first) || !ignore_csrs)
+          && (!commit_log_reg_id_is_vstatus(item.first) || !ignore_vstatus)) {
+        *out << "y" << g4rid.id;
       }
     }
   } else {
