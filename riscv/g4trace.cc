@@ -235,6 +235,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vse8_v", "vse16_v", "vse32_v", "vse64_v",
                     "vsse8_v", "vsse16_v", "vsse32_v", "vsse64_v",
                     "vsuxei8_v", "vsuxei16_v", "vsuxei32_v", "vsuxei64_v",
+                    "vsoxei8_v", "vsoxei16_v", "vsoxei32_v", "vsoxei64_v",
                     "vsm_v")) {
     return [](DECODER_ARGS) {
       G4InstInfo ret { G4InstType::S };
