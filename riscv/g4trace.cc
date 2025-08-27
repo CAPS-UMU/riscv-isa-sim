@@ -392,7 +392,8 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vrgather_vi", "vrgather_vv", "vrgather_vx", "vrgatherei16_vv",
                     "vfslide1down_vf", "vfslide1up_vf", "vcompress_vm",
                     "vnsra_wi", "vnsra_wv", "vnsra_wx", "vnsrl_wi", "vnsrl_wv", "vnsrl_wx",
-                    "vfrec7_v")) {
+                    "vfrec7_v",
+                    "vzext_vf2", "vzext_vf4", "vzext_vf8")) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::GENERIC }; };
   } else if (eq_any(instr_name,
                     "vfmacc_vf", "vfmacc_vv", "vfmadd_vf", "vfmadd_vv", "vfnmacc_vf", "vfnmacc_vv",
