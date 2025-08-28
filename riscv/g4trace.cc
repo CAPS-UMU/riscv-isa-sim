@@ -331,10 +331,10 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vrem_vv", "vrem_vx", "vremu_vv", "vremu_vx")) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::GENERIC }; };
   } else if (eq_any(instr_name,
-                    "fadd_d", "fadd_h", "fadd_q", "fadd_s", "fmin_s", "fmax_s", "fmax_d", "fclass_d", "vfadd_vf", "vfadd_vv",
+                    "fadd_d", "fadd_h", "fadd_q", "fadd_s", "fmin_s", "fmax_s", "fmax_d", "fclass_s", "fclass_d", "vfadd_vf", "vfadd_vv",
                     "vfredosum_vs", "vfredusum_vs",
                     "fsub_s", "fsub_d", "fsub_q", "fsub_h",
-                    "vfsub_vf", "vfsub_vv",
+                    "vfsub_vf", "vfsub_vv", "vfclass_v",
                     "feq_s", "feq_d", "feq_q", "feq_h", "vmfeq_vf", "vmfeq_vv", "vmfne_vf", "vmfne_vv" // Maybe these should be GENERIC
                )) {
     return [](DECODER_ARGS) { return G4InstInfo { G4InstType::A }; };
@@ -366,6 +366,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
                     "vredand_vs", "vredmax_vs", "vredmaxu_vs", "vredmin_vs", "vredminu_vs", "vredor_vs", "vredsum_vs", "vredxor_vs", 
                     "vadd_vi", "vadd_vv", "vadd_vx", "vsub_vv", "vsub_vx", "vrsub_vi", "vrsub_vx", 
                     "vwadd_vv", "vwadd_vx", "vwadd_wv", "vwadd_wx", "vwaddu_vv", "vwaddu_vx", "vwaddu_wv", "vwaddu_wx", "vwmacc_vv",
+                    "vwsub_vv", "vwsub_vx", "vwsub_wv", "vwsub_wx", "vwsubu_vv", "vwsubu_vx", "vwsubu_wv", "vwsubu_wx", 
                     "vwmacc_vx", "vwmaccsu_vv", "vwmaccsu_vx", "vwmaccu_vv", "vwmaccu_vx", "vwmaccus_vx", "vasub_vv", "vasubu_vv",
                     "vasub_vx", "vasubu_vx",
                     "vsll_vi", "vsll_vv", "vsll_vx", "vsra_vi", "vsra_vv", "vsra_vx", "vsrl_vi", "vsrl_vv", "vsrl_vx", "vssra_vi",
