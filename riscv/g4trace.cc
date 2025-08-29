@@ -249,7 +249,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
       return ret;
     };
   } else if (eq_any(instr_name,
-                    "vs1r_v", "vs2r_v" /*"vs4r_v", "vs8r_v" */)) {
+                    "vs1r_v", "vs2r_v", "vs4r_v", "vs8r_v")) {
     // Vector Store Whole Register instructions that write more than one register (vs2r_v vs4r_v vs8r_v)
     // TODO (related): Vector Store Segment Instructions 
     return [](DECODER_ARGS) {
