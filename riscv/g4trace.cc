@@ -186,7 +186,7 @@ static G4TraceDecoder g4trace_get_decoder_internal(const string& instr_name) { /
   } else if (eq_any(instr_name,
                     "lb", "lbu", "ld", "lh", "lhu", "lw", "lwu",
                     "fld", "flw", "flq", "flw",
-                    "vle8_v", "vle16_v", "vle32_v", "vle64_v", "vle8ff_v", "vle16ff_v", "vle32ff_v", "vle64ff_v"
+                    "vle8_v", "vle16_v", "vle32_v", "vle64_v", "vle8ff_v", "vle16ff_v", "vle32ff_v", "vle64ff_v",
                     "vluxei8_v", "vluxei16_v", "vluxei32_v", "vluxei64_v",
                     "vlse8_v", "vlse16_v", "vlse32_v", "vlse64_v",
                     "vlm_v",
