@@ -67,33 +67,33 @@ Registers are encoded as integers in decimal. Values 0 to 31 correspond to RISC-
 
 The supported types of instructions and the operands that they include are:
 
- | Type                          | Prefix        | Operands                                                                |
- |-------------------------------|---------------|-------------------------------------------------------------------------|
- | Generic (e.g., ALU)           |               | x, z                                                                    |
- | Load                          | L             | x, z, memory                                                            |
- | Store                         | S             | x, y, memory                                                            |
- | Read-Modify-Write atomic      | RMW           | x, y, z, memory                                                         |
- | Load reserved                 | LR            | x, z, memory                                                            |
- | Store conditional             | SC            | x, y, z, memory                                                         |
- | Branch                        | B             | x, t                                                                    |
- | Direct call                   | C             | z, t                                                                    |
- | Indirect Call                 | c             | x, z, t                                                                 |
- | Direct Jump                   | J             | t                                                                       |
- | Indirect Jump                 | j             | x, t                                                                    |
- | Return                        | r             | x, t                                                                    |
- | Floating-point addition       | A             | x, z                                                                    |
- | Floating-point multiplication | M             | x, z                                                                    |
- | Floating-point division       | D             | x, z                                                                    |
- | Floating-point square root    | Q             | x, z                                                                    |
- | Marker to start tracing       | START_TRACING |                                                                         |
- | Marker to start ROI           | CLEAR         |                                                                         |
- | Marker to stop tracing        | END_ROI       |                                                                         |
- | Mutex acquire                 | ACQ           | lock address (hex), thread id (dec)                                     |
- | Mutex release                 | REL           | lock address (hex), thread id (dec)                                     |
- |                               | BAR           | conditional variable, counter and lock addresses (hex), thread id (dec) |
- |                               | CV_SIGNAL     | conditional variable address (hex), thread id (dec)                     |
- |                               | CV_BCAST      | conditional variable address (hex), thread id (dec)                     |
- |                               | CV_WAIT       | conditional variableand lock addresses (hex), thread id (dec)           |
+ | Type                           | Prefix        | Operands                                                                |
+ |--------------------------------|---------------|-------------------------------------------------------------------------|
+ | Generic (e.g., ALU)            |               | x, z                                                                    |
+ | Load                           | L             | x, z, memory                                                            |
+ | Store                          | S             | x, y, memory                                                            |
+ | Read-Modify-Write atomic       | RMW           | x, y, z, memory                                                         |
+ | Load reserved                  | LR            | x, z, memory                                                            |
+ | Store conditional              | SC            | x, y, z, memory                                                         |
+ | Branch                         | B             | x, t                                                                    |
+ | Direct call                    | C             | z, t                                                                    |
+ | Indirect Call                  | c             | x, z, t                                                                 |
+ | Direct Jump                    | J             | t                                                                       |
+ | Indirect Jump                  | j             | x, t                                                                    |
+ | Return                         | r             | x, t                                                                    |
+ | Floating-point addition        | A             | x, z                                                                    |
+ | Floating-point multiplication  | M             | x, z                                                                    |
+ | Floating-point division        | D             | x, z                                                                    |
+ | Floating-point square root     | Q             | x, z                                                                    |
+ | Marker to start tracing        | START_TRACING |                                                                         |
+ | Marker to start ROI            | CLEAR         |                                                                         |
+ | Marker to stop tracing         | END_ROI       |                                                                         |
+ | Mutex acquire                  | ACQ           | lock address (hex), thread id (dec)                                     |
+ | Mutex release                  | REL           | lock address (hex), thread id (dec)                                     |
+ | Barrier syncronization         | BAR           | conditional variable, counter and lock addresses (hex), thread id (dec) |
+ | Conditional variable signal    | CV_SIGNAL     | conditional variable address (hex), thread id (dec)                     |
+ | Conditional variable broadcast | CV_BCAST      | conditional variable address (hex), thread id (dec)                     |
+ | Conditional variable wait      | CV_WAIT       | conditional variableand lock addresses (hex), thread id (dec)           |
  
 Traces may include comments delimited by `{` and `}`. The tracer generates comments showing the original traced instructions if the `--log-g4trace-debug` is used.
   
