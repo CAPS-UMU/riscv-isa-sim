@@ -48,7 +48,7 @@ There are as many `trace-XXXX.trc` files as specified in the first line of `trac
  - The first line is the starting program counter of the trace, in hexadecimal.
  - Each line contains an instruction, encoded as follows:
    - The type of the instruction, identified by the sequence of letters until the first decimal digit. Note that the sequence may be empty (used to encode generic instructions).
-   - The program counter of the instruction, encoded as the offset in hexadecimal with respect to the previous instruction. Will be zero for the first instruction.
+   - The program counter of the instruction, encoded as the offset in decimal with respect to the previous instruction. Will be zero for the first instruction.
    - Operands of the instruction (including registers and memory locations, depending of the instruction type).
    - Branch information (if the instruction is a branch).
 
