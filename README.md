@@ -1,23 +1,20 @@
-Spike RISC-V ISA Simulator with tracer for gems4proc
-======================================================
+# Spike RISC-V ISA Simulator with tracer for gems4proc
 
 This is a fork of Spike that can generate traces for gems4proc. It's requirements and build instructions are the same as the original Spike.
 
 It adds the following command line options to Spike:
 
- - --log-g4trace: Enable the generation of gems4proc traces.
- - --log-g4trace-dest: Specify the destination of the trace. A directory will be created with the given path.
- - --log-g4trace-debug: Enable debug comments in the generated traces.
- - TODO: add option --log-use-roi-markers (always enabled for now)
- - TODO: add option --log-filter-privileged (always enabled for now)
+ - `--log-g4trace`: Enable the generation of gems4proc traces.
+ - `--log-g4trace-dest`: Specify the destination of the trace. A directory will be created with the given path.
+ - `--log-g4trace-debug`: Enable debug comments in the generated traces.
 
-Some other options are added to control the format of the trace and for debugging.
+Some other options are added to control the format of the trace and for debugging. Run with `--help` for more information.
 
-The build procedure is the same as upstream Spike. You can read or use the build-riscv-tracer script to build the tracer and the required riscv-spike-sdk in a way that has already been tested. Note that building riscv-spike-sdk is sometimes tedious because some of the involved repositories tend to fail temporarily.
+The build procedure is the same as upstream Spike. You can read or use the `build-riscv-tracer` script to build the tracer and the required riscv-spike-sdk in a way that has already been tested. Note that building riscv-spike-sdk is sometimes tedious because some of the involved repositories tend to fail temporarily.
  
-Programs can be simulated (and traced) in all the same ways as with upstream Spike. The script spike-run-fs can be used to run a program using full system simulation using the kernel and initrd built with buildroot by riscv-spike-sdk (see buildroot documentation for possible customizations). An additional temporary initrd will be created with the program to be simulated and some supporting files. See «spike-run-fs --help» and the source of the script for more information.
+Programs can be simulated (and traced) in all the same ways as with upstream Spike. The script `spike-run-fs` can be used to run a program using full system simulation using the kernel and initrd built with buildroot by riscv-spike-sdk (see buildroot documentation for possible customizations). An additional temporary initrd will be created with the program to be simulated and some supporting files. See `spike-run-fs --help` and the source of the script for more information.
 
-The traced programs are expected to be annotated using the hint instructions defined in g4tracer-interface/g4tracer-interface.h. At least g4tracer_init_thread, g4tracer_start_tracing, g4tracer_start_ROI and g4tracer_end_ROI should be called by each thread that needs to be traced. Syncronization needs to be annotated using the g4trace_*_sm_* funtions. The resulting trace will only contain traces for user level threads that have called g4tracer_start_tracing. 
+The traced programs are expected to be annotated using the hint instructions defined in `g4tracer-interface/g4tracer-interface.h`. At least `pg4tracer_start_tracing`, `g4tracer_start_ROI` and `g4tracer_end_ROI` should be called by each thread that needs to be traced. Syncronization needs to be annotated using the `g4trace_*_sm_* funtions`. The resulting trace will only contain traces for user level threads that have called `g4tracer_start_tracing`. 
  
 Tracing of priviledged (OS) code is not supported. Priviledged instructions will be filtered.
 
@@ -25,7 +22,7 @@ The tracer works per OS thread. Threads are identified by the `tp` register and 
 
 Thread binding and the number of processors used by spike is mostly irrelevant for the traces (except that different scheduling by the OS may produce different traces when syncronization is involved).
  
-Test programs are in tracer_test.
+Test programs are in tracer_test. 
 
 Examples of use:
 
@@ -33,18 +30,95 @@ Examples of use:
    # The spike-run-fs script  allows to do full system simulation and passing any argument to Spike. It should work with upstream Spike also.
    ./spike-run-fs -s--log-g4trace -s--log-g4trace-dest=./trace-output -- ./tracer_tests/test02/test02.gcc.riscv64gcv
 ```
+
 ```
-   # The trace-bencmark script is like spike-run-fs but adds tracing options by default.
+   # The trace-benchmark script is like spike-run-fs but adds tracing options by default.
    ./trace-benchmark --num-procs=5 --trace-destination=/tmp/test-trace tracer_tests/a02-near-atomic-friendly/a02-near-atomic-friendly.gcc.riscv64gc
 ```
 
-Known Bugs
-=================
+# Trace format
+
+Each trace is stored in a directory that contains a `trace.index` file and one or more `trace-XXXX.trc` files. The `trace.index` file consists of three lines:
+
+ - The first line specifies the number of threads that are part of the trace.
+ - The next two lines always contain, in the case of RISC-V traces, exactly the strings “TRACE_HAS_SEQUENCE_NUMBERS: 0” and “TRACE_HAS_SC_vs_RELAXED_LOCK_TYPE: 0,” and are used to identify the trace format version in gems4caps.
+
+There are as many `trace-XXXX.trc` files as specified in the first line of `trace.index`. For each one, *XXXX* is the number of the thread whose instructions have been recorded in that file and varies from 0 to the number of threads minus 1 (adding zeros on the left to fill 4 digits). The numbers are assigned as threads start tracing. Optionally, `trace-XXXX.trc` files are compressed, and gems4caps and the tracer support uncompressed trace files or files compressed with lzma (default), zstd, or gzip. Ignoring the compression, each file lists the instructions executed by a thread in the following format:
+
+ - The first line is the starting program counter of the trace, in hexadecimal.
+ - Each line contains an instruction, encoded as follows:
+   - The type of the instruction, identified by the sequence of letters until the first decimal digit. Note that the sequence may be empty (used to encode generic instructions).
+   - The program counter of the instruction, encoded as the offset in hexadecimal with respect to the previous instruction. Will be zero for the first instruction.
+   - Operands of the instruction (including registers and memory locations, depending of the instruction type).
+   - Branch information (if the instruction is a branch).
+
+The included operands depend on the type of instruction. The format is as follows:
+
+ - Registers that are read are listed preceded by the letter `y` (for data registers read by store instructions) or `x` (for everything else).
+ - Registers that are written are listed preceded by the letter `z`.
+ - Memory addresses that are read o written are formatted depending on the type of access:
+   - Scalar accesses: the address in hexadecimal is printed preceded by a space, and then the size in decimal is printed separated by a space. 
+   - Vector contiguous and strided accesses: the size in decimal is printed preceded by `s`, then the number of elements accessed in decimal preceded by `e`, then the address in hexadecimal of the first accessed element preceded by a space. If the stride is different than zero, it will be included in decimal after the first address, preceded by the character `+`.
+   - Vector indexed accesses: the size in decimal is printed preceded by `s`, then the number of elements accessed in decimal preceded by `e`, then the list of addresses in hexadecimal accessed by the instruction, preceded by a space and separating each element with a comma (`,`).
+   
+ - The destination address for branches and jumps is listed as the offset in decimal with respect to the current instruction. If the instruction is a taken branch, the character `*` will be added after the address.
+
+Registers are encoded as integers in decimal. Values 0 to 31 correspond to RISC-V registers `x0` to `x31`, values 32 to 63 correspond to registers `f0` to `f31` and values 64 to 95 correspond to registers `v0` to `v31`. Note that scalar and vector instructions are differentiated only by the registers that they access.
+
+The supported types of instructions and the operands that they include are:
+
+ | Type                          | Prefix        | Operands                            |
+ |-------------------------------|---------------|-------------------------------------|
+ | Generic (e.g., ALU)           |               | x, z                                |
+ | Load                          | L             | x, z, memory                        |
+ | LA, LE ??????????             | LA, LE        |                                     |
+ | Store                         | S             | x, y, memory                        |
+ | SA ??????????                 | SA            |                                     |
+ | Read-Modify-Write atomic      | RMW           | x, y, z, memory                     |
+ | Load reserved                 | LR            | x, z, memory                        |
+ | Store conditional             | SC            | x, y, z, memory                     |
+ | Branch                        | B             |                                     |
+ | ?????                         | C             |                                     |
+ | Call (jal)                    | c             |                                     |
+ | Jump                          | J             |                                     |
+ | ?????                         | j             |                                     |
+ | Return (jr)                   | r             |                                     |
+ | Floating-point addition       | A             |                                     |
+ | Floating-point multiplication | M             |                                     |
+ | Floating-point division       | D             |                                     |
+ | Floating-point square root    | Q             |                                     |
+ | Marker to start tracing       | START_TRACING |                                     |
+ | Marker to start ROI           | CLEAR         |                                     |
+ | Marker to stop tracing        | END_ROI       |                                     |
+ | Mutex acquire                 | ACQ           | lock address (hex), thread id (dec) |
+ | Mutex release                 | REL           | lock address (hex), thread id (dec) |
+ |                               | BAR           |                                     |
+ |                               | CV_SIGNAL     |                                     |
+ |                               | CV_BCAST      |                                     |
+ |                               | CV_WAIT       |                                     |
+ 
+Traces may include comments delimited by `{` and `}`. The tracer generates comments showing the original traced instructions if the `--log-g4trace-debug` is used.
+  
+Note that, although we the traces generated by the tracer follow the rules stated above, gems4caps accepts some variations in the format to support backward compatibility with previous versions. For example, instructions may be put in the same line and separated by spaces instead of newlines.
+
+Example of a generated trace:
+
+TODO
+
+
+## Known Bugs
 
  - ecall instructions are currently missing from the trace (and possibly other instructions that generate traps)
 
-Upstream README
-=================
+## TODO
+
+ - add option `--log-use-roi-markers` (always enabled for now)
+ - add option `--log-filter-privileged` (always enabled for now)
+
+# Upstream README
+
+The following sections are taken verbatim from the original README.md of Spike.
+
 
 Spike RISC-V ISA Simulator
 ============================
