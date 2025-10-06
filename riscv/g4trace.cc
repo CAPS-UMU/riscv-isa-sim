@@ -554,19 +554,11 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
   } else if (g4i.type == G4InstType::L) {
     prefix = "L";
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
-  } else if (g4i.type == G4InstType::LA) {
-    prefix = "LA";
-    assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
   } else if (g4i.type == G4InstType::LR) {
     prefix = "LR";
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
   } else if (g4i.type == G4InstType::S) {
     prefix = "S";
-    assert(g4i.S_base_reg != g4trace_regid_invalid);
-    assert(g4i.S_data_reg != g4trace_regid_invalid);
-    assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
-  } else if (g4i.type == G4InstType::SA) {
-    prefix = "SA";
     assert(g4i.S_base_reg != g4trace_regid_invalid);
     assert(g4i.S_data_reg != g4trace_regid_invalid);
     assert(g4i.memory_access_type != G4VectorMemAccessType::INVALID);
@@ -680,7 +672,6 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
 
   // print x and y register operands for S (and SA and SC, and not RMW), and x operands for anything else
   if (g4i.type == G4InstType::S
-      || g4i.type == G4InstType::SA
       || g4i.type == G4InstType::SC
       /* || g4i.type == G4InstType::RMW*/) {
     assert(g4i.S_base_reg != g4trace_regid_invalid);
@@ -726,13 +717,13 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
     }
   }
 
-  assert(loads.empty() || (g4i.type == G4InstType::L || g4i.type == G4InstType::LA || g4i.type == G4InstType::LR || g4i.type == G4InstType::RMW));
-  if (g4i.type == G4InstType::L || g4i.type == G4InstType::LA || g4i.type == G4InstType::LR || g4i.type == G4InstType::RMW) {
+  assert(loads.empty() || (g4i.type == G4InstType::L || g4i.type == G4InstType::LR || g4i.type == G4InstType::RMW));
+  if (g4i.type == G4InstType::L || g4i.type == G4InstType::LR || g4i.type == G4InstType::RMW) {
     g4trace_print_memory_access_addresses(loads, g4i, out);
   }
 
-  assert(stores.empty() || (g4i.type == G4InstType::S || g4i.type == G4InstType::SA || g4i.type == G4InstType::SC || g4i.type == G4InstType::RMW));
-  if (g4i.type == G4InstType::S || g4i.type == G4InstType::SA || g4i.type == G4InstType::SC) { // don't print stores for RMWs, they sould be the same as loads
+  assert(stores.empty() || (g4i.type == G4InstType::S || g4i.type == G4InstType::SC || g4i.type == G4InstType::RMW));
+  if (g4i.type == G4InstType::S || g4i.type == G4InstType::SC) { // don't print stores for RMWs, they sould be the same as loads
     g4trace_print_memory_access_addresses(stores, g4i, out);
   }
 
