@@ -507,7 +507,7 @@ void g4trace_trace_inst(processor_t *p, reg_t pc, insn_t insn, G4TraceDecoder de
          //<< hex << setw(16) << right << ti.satp << " "
          //<< hex << setw(16) << right << ti.tp << " "
          //<< hex << setw(16) << hash<G4ThreadIdentifier>{}(ti) << " "
-         << setw(8) << right << pc << " "
+         << hex << setw(8) << right << pc << " "
          //<< setw(8) << right << insn.bits() << " "
          << dec
          << " " << left << setw(32) << p->get_disassembler()->disassemble(insn) << " } ";
