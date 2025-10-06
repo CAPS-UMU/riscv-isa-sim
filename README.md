@@ -49,8 +49,7 @@ There are as many `trace-XXXX.trc` files as specified in the first line of `trac
  - Each line contains an instruction, encoded as follows:
    - The type of the instruction, identified by the sequence of letters until the first decimal digit. Note that the sequence may be empty (used to encode generic instructions).
    - The program counter of the instruction, encoded as the offset in decimal with respect to the previous instruction. Will be zero for the first instruction.
-   - Operands of the instruction (including registers and memory locations, depending of the instruction type).
-   - Branch information (if the instruction is a branch).
+   - Operands of the instruction (including registers, data memory locations or branch/jump destinations, depending of the instruction type).
 
 The included operands depend on the type of instruction. The format is as follows:
 
@@ -60,8 +59,7 @@ The included operands depend on the type of instruction. The format is as follow
    - Scalar accesses: the address in hexadecimal is printed preceded by a space, and then the size in decimal is printed separated by a space. 
    - Vector contiguous and strided accesses: the size in decimal is printed preceded by `s`, then the number of elements accessed in decimal preceded by `e`, then the address in hexadecimal of the first accessed element preceded by a space. If the stride is different than zero, it will be included in decimal after the first address, preceded by the character `+`.
    - Vector indexed accesses: the size in decimal is printed preceded by `s`, then the number of elements accessed in decimal preceded by `e`, then the list of addresses in hexadecimal accessed by the instruction, preceded by a space and separating each element with a comma (`,`).
-   
- - The destination address for branches and jumps is listed as the offset in decimal with respect to the current instruction preceded by the letter `t`.. If the instruction is a taken branch, the character `*` will be added after the address.
+ - The destination address for branches and jumps is listed as the offset in decimal with respect to the current instruction preceded by the letter `t`. If the instruction is a taken branch, the character `*` will be added after the address.
 
 Registers are encoded as integers in decimal. Values 0 to 31 correspond to RISC-V registers `x0` to `x31`, values 32 to 63 correspond to registers `f0` to `f31` and values 64 to 95 correspond to registers `v0` to `v31`. Note that scalar and vector instructions are differentiated only by the registers that they access.
 
