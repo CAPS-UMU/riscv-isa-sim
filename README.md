@@ -1,10 +1,10 @@
-# Spike RISC-V ISA Simulator with tracer for gems4proc
+# Spike RISC-V ISA Simulator with tracer for gems4caps
 
-This is a fork of Spike that can generate traces for gems4proc. It's requirements and build instructions are the same as the original Spike.
+This is a fork of Spike that can generate traces for gems4caps. It's requirements and build instructions are the same as the original Spike.
 
 It adds the following command line options to Spike:
 
- - `--log-g4trace`: Enable the generation of gems4proc traces.
+ - `--log-g4trace`: Enable the generation of gems4caps traces.
  - `--log-g4trace-dest`: Specify the destination of the trace. A directory will be created with the given path.
  - `--log-g4trace-debug`: Enable debug comments in the generated traces.
 
@@ -61,50 +61,97 @@ The included operands depend on the type of instruction. The format is as follow
    - Vector contiguous and strided accesses: the size in decimal is printed preceded by `s`, then the number of elements accessed in decimal preceded by `e`, then the address in hexadecimal of the first accessed element preceded by a space. If the stride is different than zero, it will be included in decimal after the first address, preceded by the character `+`.
    - Vector indexed accesses: the size in decimal is printed preceded by `s`, then the number of elements accessed in decimal preceded by `e`, then the list of addresses in hexadecimal accessed by the instruction, preceded by a space and separating each element with a comma (`,`).
    
- - The destination address for branches and jumps is listed as the offset in decimal with respect to the current instruction. If the instruction is a taken branch, the character `*` will be added after the address.
+ - The destination address for branches and jumps is listed as the offset in decimal with respect to the current instruction preceded by the letter `t`.. If the instruction is a taken branch, the character `*` will be added after the address.
 
 Registers are encoded as integers in decimal. Values 0 to 31 correspond to RISC-V registers `x0` to `x31`, values 32 to 63 correspond to registers `f0` to `f31` and values 64 to 95 correspond to registers `v0` to `v31`. Note that scalar and vector instructions are differentiated only by the registers that they access.
 
 The supported types of instructions and the operands that they include are:
 
- | Type                          | Prefix        | Operands                            |
- |-------------------------------|---------------|-------------------------------------|
- | Generic (e.g., ALU)           |               | x, z                                |
- | Load                          | L             | x, z, memory                        |
- | LA, LE ??????????             | LA, LE        |                                     |
- | Store                         | S             | x, y, memory                        |
- | SA ??????????                 | SA            |                                     |
- | Read-Modify-Write atomic      | RMW           | x, y, z, memory                     |
- | Load reserved                 | LR            | x, z, memory                        |
- | Store conditional             | SC            | x, y, z, memory                     |
- | Branch                        | B             |                                     |
- | ?????                         | C             |                                     |
- | Call (jal)                    | c             |                                     |
- | Jump                          | J             |                                     |
- | ?????                         | j             |                                     |
- | Return (jr)                   | r             |                                     |
- | Floating-point addition       | A             |                                     |
- | Floating-point multiplication | M             |                                     |
- | Floating-point division       | D             |                                     |
- | Floating-point square root    | Q             |                                     |
- | Marker to start tracing       | START_TRACING |                                     |
- | Marker to start ROI           | CLEAR         |                                     |
- | Marker to stop tracing        | END_ROI       |                                     |
- | Mutex acquire                 | ACQ           | lock address (hex), thread id (dec) |
- | Mutex release                 | REL           | lock address (hex), thread id (dec) |
- |                               | BAR           |                                     |
- |                               | CV_SIGNAL     |                                     |
- |                               | CV_BCAST      |                                     |
- |                               | CV_WAIT       |                                     |
+ | Type                          | Prefix        | Operands                                                                |
+ |-------------------------------|---------------|-------------------------------------------------------------------------|
+ | Generic (e.g., ALU)           |               | x, z                                                                    |
+ | Load                          | L             | x, z, memory                                                            |
+ | Store                         | S             | x, y, memory                                                            |
+ | Read-Modify-Write atomic      | RMW           | x, y, z, memory                                                         |
+ | Load reserved                 | LR            | x, z, memory                                                            |
+ | Store conditional             | SC            | x, y, z, memory                                                         |
+ | Branch                        | B             | x, t                                                                    |
+ | Direct call                   | C             | z, t                                                                    |
+ | Indirect Call                 | c             | x, z, t                                                                 |
+ | Direct Jump                   | J             | t                                                                       |
+ | Indirect Jump                 | j             | x, t                                                                    |
+ | Return                        | r             | x, t                                                                    |
+ | Floating-point addition       | A             | x, z                                                                    |
+ | Floating-point multiplication | M             | x, z                                                                    |
+ | Floating-point division       | D             | x, z                                                                    |
+ | Floating-point square root    | Q             | x, z                                                                    |
+ | Marker to start tracing       | START_TRACING |                                                                         |
+ | Marker to start ROI           | CLEAR         |                                                                         |
+ | Marker to stop tracing        | END_ROI       |                                                                         |
+ | Mutex acquire                 | ACQ           | lock address (hex), thread id (dec)                                     |
+ | Mutex release                 | REL           | lock address (hex), thread id (dec)                                     |
+ |                               | BAR           | conditional variable, counter and lock addresses (hex), thread id (dec) |
+ |                               | CV_SIGNAL     | conditional variable address (hex), thread id (dec)                     |
+ |                               | CV_BCAST      | conditional variable address (hex), thread id (dec)                     |
+ |                               | CV_WAIT       | conditional variableand lock addresses (hex), thread id (dec)           |
  
 Traces may include comments delimited by `{` and `}`. The tracer generates comments showing the original traced instructions if the `--log-g4trace-debug` is used.
   
 Note that, although we the traces generated by the tracer follow the rules stated above, gems4caps accepts some variations in the format to support backward compatibility with previous versions. For example, instructions may be put in the same line and separated by spaces instead of newlines.
 
-Example of a generated trace:
+Below you can see an example excerpt of a generated trace, including comments. Note that `sltiu, zero, zero, 257` is the `START_TRACING` marker and `sltiu, zero, zero, 257` marks the beginning of the ROI.
 
-TODO
-
+    {    66666  sltiu   zero, zero, 257          } 1046e
+    {    66670  lui     a5, 0x7e                 } 0z15
+    {    66674  vsetvli a7, zero, e32, m1, ta, ma } 4x0z17
+    {    66678  flw     fa5, -1896(a5)           } L4x15z47 7d898 4
+    {    66682  lui     a1, 0x7e                 } 4z11
+    {    66686  c.lui   a3, 0x18                 } 4z13
+    {    66688  vid.v   v2                       } 2z66
+    {    66692  addi    a0, a1, -1808            } 4x11z10
+    {    66696  addi    a3, a3, 1696             } 4x13z13
+    {    66700  addi    a1, a1, -1808            } 4x11z11
+    {    66704  vfcvt.f.x.v v1, v2               } 4x66z65
+    {    66708  vsetvli a4, a3, e8, mf4, ta, ma  } 4x13z14
+    {    66712  vsetvli a5, zero, e32, m1, ta, ma } 4x0z15
+    {    66716  vmv1r.v v3, v1                   } 4x65z67
+    {    66720  vfmv.v.f v4, fa5                 } 4x64x47z68
+    {    66724  vmv1r.v v5, v1                   } 4x65z69
+    {    66728  vmv.v.x v1, a4                   } 4x64x14z65
+    {    66732  vsetvli zero, a4, e32, m1, ta, ma } 4x14
+    …
+    {    66762  sw      zero, -2032(gp)          } S2x3y0 7d8a8 4
+    {    66766  sltiu   zero, zero, 258          } CLEAR
+    {    66770  lui     a5, 0x7e                 } 8z15
+    {    66774  flw     fa4, -1892(a5)           } L4x15z46 7d89c 4
+    {    66778  flw     fa5, -2032(gp)           } L4x3z47 7d8a8 4
+    {    66782  vmv.v.i v1, 0                    } 4x64z65
+    {    66786  vfmv.v.f v2, fa4                 } 4x64x46z66
+    {    66790  c.lui   a3, 0x18                 } 4z13
+    {    66792  c.mv    a2, a0                   } 2x10z12
+    {    66794  addi    a3, a3, 1696             } 2x13z13
+    {    66798  vsetvli a5, a3, e32, m1, tu, ma  } 4x13z15
+    {    66802  vlseg3e32.v v3, (a2)             } L4x12z67z68z69s4e48 7d8f0 
+    {    66806  vfadd.vv v1, v1, v2              } A4x65x66z65
+    {    66810  slli    a4, a5, 1                } 4x15z14
+    …
+    {    66830  vfadd.vv v1, v1, v5              } A4x65x69z65
+    {    66834  c.bnez  a3, pc - 36              } B4x13t-36*
+    {    66798  vsetvli a5, a3, e32, m1, tu, ma  } -36x13z15
+    {    66802  vlseg3e32.v v3, (a2)             } L4x12z67z68z69s4e48 7e130 
+    {    66806  vfadd.vv v1, v1, v2              } A4x65x66z65
+    {    66810  slli    a4, a5, 1                } 4x15z14
+    {    66814  c.add   a4, a5                   } 4x14x15z14
+    {    66816  c.slli  a4, 2                    } 2x14z14
+    {    66818  c.sub   a3, a5                   } 2x13x15z13
+    {    66820  c.add   a2, a4                   } 2x12x14z12
+    {    66822  vfadd.vv v1, v1, v3              } A2x65x67z65
+    {    66826  vfadd.vv v1, v1, v4              } A4x65x68z65
+    {    66830  vfadd.vv v1, v1, v5              } A4x65x69z65
+    {    66834  c.bnez  a3, pc - 36              } B4x13t-36*
+    {    66798  vsetvli a5, a3, e32, m1, tu, ma  } -36x13z15
+    {    66802  vlseg3e32.v v3, (a2)             } L4x12z67z68z69s4e48 7e1f0 
+    …
 
 ## Known Bugs
 
